@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "BitBack",
+    "slug": "bitback",
+    "version": "1.0.0",
+    "scheme": "bitback",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": { "resizeMode": "contain", "backgroundColor": "#0A0A0B" },
+    "ios": { "supportsTablet": false, "bundleIdentifier": "app.bitback.mobile" },
+    "android": {
+      "package": "app.bitback.mobile",
+      "adaptiveIcon": { "backgroundColor": "#0A0A0B" },
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": ["expo-router", "expo-font", "expo-secure-store"],
+    "experiments": { "typedRoutes": true }
+  }
+}
