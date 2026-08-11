@@ -11,8 +11,7 @@
     "ios": { "supportsTablet": false, "bundleIdentifier": "app.bitback.mobile" },
     "android": {
       "package": "app.bitback.mobile",
-      "adaptiveIcon": { "backgroundColor": "#0A0A0B" },
-      "edgeToEdgeEnabled": true
+      "adaptiveIcon": { "backgroundColor": "#0A0A0B" }
     },
     "plugins": ["expo-router", "expo-font", "expo-secure-store"],
     "experiments": { "typedRoutes": true }

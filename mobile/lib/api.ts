@@ -43,11 +43,17 @@ api.interceptors.response.use(
       onUnauthorized?.();
     }
     // Surface the backend's own message rather than "Request failed with status 400".
-    error.friendlyMessage =
-      error.response?.data?.detail ??
-      (error.code === "ECONNABORTED" || !error.response
-        ? `Can't reach the server at ${BASE_URL}. Check it's running.`
-        : "Something went wrong. Try again.");
+    const detail = error.response?.data?.detail;
+    if (typeof detail === "string") {
+      error.friendlyMessage = detail;
+    } else if (Array.isArray(detail)) {
+      error.friendlyMessage = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ");
+    } else {
+      error.friendlyMessage =
+        error.code === "ECONNABORTED" || !error.response
+          ? `Can't reach the server at ${BASE_URL}. Check it's running.`
+          : "Something went wrong. Try again.";
+    }
     return Promise.reject(error);
   },
 );
