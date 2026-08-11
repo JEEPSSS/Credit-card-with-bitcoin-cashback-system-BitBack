@@ -53,3 +53,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Bundle
+        run: npx expo export --platform android --output-dir /tmp/expo-export

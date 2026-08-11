@@ -1,4 +1,3 @@
-import "../global.css";
 import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -7,9 +6,13 @@ import { useFonts, Inter_400Regular, Inter_500Medium } from "@expo-google-fonts/
 import { JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
 import * as SplashScreen from "expo-splash-screen";
 import { AuthProvider } from "@/lib/auth";
-import { COLORS } from "@/components/ui";
+import { COLORS } from "@/lib/theme";
+import { RouteErrorBoundary } from "@/components/ErrorBoundary";
 
 SplashScreen.preventAutoHideAsync();
+
+/** Expo Router picks this up by name and uses it for every route below. */
+export { RouteErrorBoundary as ErrorBoundary };
 
 export default function RootLayout() {
   const [loaded] = useFonts({ Inter_400Regular, Inter_500Medium, JetBrainsMono_500Medium });

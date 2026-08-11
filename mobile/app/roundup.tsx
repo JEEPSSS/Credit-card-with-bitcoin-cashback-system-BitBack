@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import { View, Text, Switch, Pressable } from "react-native";
 import { configAPI } from "@/lib/api";
-import { Card, COLORS, Header, Label, Loading, Screen } from "@/components/ui";
+import type { RoundUpConfig } from "@/lib/types";
+import { useApi } from "@/lib/useApi";
+import { Card, COLORS, ErrorNote, Header, Label, Loading, Screen } from "@/components/ui";
+import { font, fontSize } from "@/lib/theme";
 
 const OPTIONS = [
   { value: 1.0, label: "1x", note: "Spare change to the next dollar" },
@@ -10,14 +13,29 @@ const OPTIONS = [
 ];
 
 export default function RoundUp() {
-  const [cfg, setCfg] = useState<any>(null);
+  const state = useApi(useCallback(() => configAPI.getRoundup(), []));
 
-  useEffect(() => { configAPI.getRoundup().then(setCfg).catch(() => {}); }, []);
-  if (!cfg) return <Screen><Loading /></Screen>;
+  if (state.error && !state.data) {
+    return (
+      <Screen>
+        <Header back title="Round-up" />
+        <ErrorNote message={state.error} onRetry={state.reload} />
+      </Screen>
+    );
+  }
+  if (!state.data) return <Screen><Loading /></Screen>;
 
-  const save = async (next: any) => {
-    setCfg(next);
-    await configAPI.setRoundup(next).catch(() => {});
+  const cfg = state.data;
+
+  /** Optimistic: flip the control immediately, roll back if the save fails. */
+  const save = async (next: RoundUpConfig) => {
+    const previous = cfg;
+    state.setData(next);
+    try {
+      state.setData(await configAPI.setRoundup(next));
+    } catch {
+      state.setData(previous);
+    }
   };
 
   return (
@@ -26,8 +44,8 @@ export default function RoundUp() {
       <Card style={{ marginBottom: 20 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flex: 1, paddingRight: 16 }}>
-            <Text style={{ color: COLORS.text, fontSize: 15, fontFamily: "Inter_500Medium" }}>Round-up</Text>
-            <Text style={{ color: COLORS.muted, fontSize: 13, marginTop: 4, lineHeight: 19 }}>
+            <Text style={{ color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium }}>Round-up</Text>
+            <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 4, lineHeight: 19 }}>
               A $12.35 purchase adds 65 cents of bitcoin on top of the cashback.
             </Text>
           </View>
@@ -58,10 +76,10 @@ export default function RoundUp() {
                     borderColor: active ? COLORS.primary : COLORS.border,
                   }}
                 >
-                  <Text style={{ color: active ? COLORS.primary : COLORS.text, fontSize: 16, fontFamily: "JetBrainsMono_500Medium", width: 40 }}>
+                  <Text style={{ color: active ? COLORS.primary : COLORS.text, fontSize: fontSize.body, fontFamily: font.mono, width: 40 }}>
                     {o.label}
                   </Text>
-                  <Text style={{ color: COLORS.muted, fontSize: 13, flex: 1 }}>{o.note}</Text>
+                  <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, flex: 1 }}>{o.note}</Text>
                 </Pressable>
               );
             })}

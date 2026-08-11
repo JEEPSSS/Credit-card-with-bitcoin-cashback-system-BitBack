@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { View, Text, TextInput, KeyboardAvoidingView, Platform, Pressable } from "react-native";
 import { Link } from "expo-router";
-import { authAPI, securityAPI } from "@/lib/api";
+import { messageFor, authAPI, securityAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Card, COLORS, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
+import { font, fontSize } from "@/lib/theme";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -21,9 +22,9 @@ export default function Login() {
     try {
       const r = await authAPI.login({ email: email.trim().toLowerCase(), password });
       if (r.requires_2fa) setChallenge(r.challenge_token);
-      else await signIn(r.access_token, r.user);
-    } catch (e: any) {
-      setError(e.friendlyMessage);
+      else await signIn(r);
+    } catch (e) {
+      setError(messageFor(e));
     } finally {
       setBusy(false);
     }
@@ -34,9 +35,9 @@ export default function Login() {
     setError("");
     try {
       const r = await securityAPI.authenticate({ challenge_token: challenge!, code: code.trim() });
-      await signIn(r.access_token, r.user);
-    } catch (e: any) {
-      setError(e.friendlyMessage);
+      await signIn(r);
+    } catch (e) {
+      setError(messageFor(e));
     } finally {
       setBusy(false);
     }
@@ -46,11 +47,11 @@ export default function Login() {
     <Screen>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={{ paddingTop: 56, paddingBottom: 40 }}>
-          <Text style={{ color: COLORS.primary, fontSize: 44, fontFamily: "JetBrainsMono_500Medium" }}>₿</Text>
-          <Text style={{ color: COLORS.text, fontSize: 25, fontFamily: "Inter_500Medium", marginTop: 12 }}>
+          <Text style={{ color: COLORS.primary, fontSize: fontSize.display, fontFamily: font.mono }}>₿</Text>
+          <Text style={{ color: COLORS.text, fontSize: fontSize.title, fontFamily: font.medium, marginTop: 12 }}>
             {challenge ? "Enter your code" : "Sign in to BitBack"}
           </Text>
-          <Text style={{ color: COLORS.muted, fontSize: 14, marginTop: 6, lineHeight: 20 }}>
+          <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 6, lineHeight: 20 }}>
             {challenge
               ? "Open your authenticator app and enter the six-digit code."
               : "Every purchase earns bitcoin instead of points."}
@@ -91,12 +92,12 @@ export default function Login() {
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 20 }}>
               <Link href="/(auth)/register" asChild>
                 <Pressable hitSlop={12}>
-                  <Text style={{ color: COLORS.primary, fontSize: 14 }}>Create an account</Text>
+                  <Text style={{ color: COLORS.primary, fontSize: fontSize.caption }}>Create an account</Text>
                 </Pressable>
               </Link>
               <Link href="/(auth)/forgot-password" asChild>
                 <Pressable hitSlop={12}>
-                  <Text style={{ color: COLORS.muted, fontSize: 14 }}>Forgot password</Text>
+                  <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>Forgot password</Text>
                 </Pressable>
               </Link>
             </View>
@@ -104,8 +105,8 @@ export default function Login() {
         )}
 
         {error ? (
-          <Card style={{ marginTop: 20, borderColor: "#4A2020" }}>
-            <Text style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}>{error}</Text>
+          <Card style={{ marginTop: 20, borderColor: COLORS.dangerBorder }}>
+            <Text style={{ color: COLORS.text, fontSize: fontSize.caption, lineHeight: 20 }}>{error}</Text>
           </Card>
         ) : null}
       </KeyboardAvoidingView>

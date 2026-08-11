@@ -1,25 +1,45 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { View, Text } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { securityAPI } from "@/lib/api";
-import { Button, Card, COLORS, Header, Label, Loading, Screen } from "@/components/ui";
+import { securityAPI, messageFor } from "@/lib/api";
+import type { TwoFactorSetup } from "@/lib/types";
+import { useApi } from "@/lib/useApi";
+import { Button, Card, COLORS, ErrorNote, Header, Label, Loading, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
+import { font, fontSize } from "@/lib/theme";
 
 export default function Security() {
-  const [status, setStatus] = useState<any>(null);
-  const [setup, setSetup] = useState<any>(null);
+  const [setup, setSetup] = useState<TwoFactorSetup | null>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { securityAPI.status().then(setStatus).catch(() => {}); }, []);
-  if (!status) return <Screen><Loading /></Screen>;
+  const state = useApi(useCallback(() => securityAPI.status(), []));
 
-  async function run(fn: () => Promise<any>) {
-    setBusy(true); setError("");
-    try { return await fn(); }
-    catch (e: any) { setError(e.friendlyMessage); }
-    finally { setBusy(false); }
+  if (state.error && !state.data) {
+    return (
+      <Screen>
+        <Header back title="Security" />
+        <ErrorNote message={state.error} onRetry={state.reload} />
+      </Screen>
+    );
+  }
+  if (!state.data) return <Screen><Loading /></Screen>;
+
+  const status = state.data;
+  const setStatus = state.setData;
+
+  async function run<T>(fn: () => Promise<T>): Promise<T | undefined> {
+    setBusy(true);
+    setError("");
+    try {
+      return await fn();
+    } catch (e) {
+      setError(messageFor(e));
+      return undefined;
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -27,10 +47,10 @@ export default function Security() {
       <Header back title="Security" subtitle="Two-factor authentication adds a code from your authenticator app at sign-in." />
 
       <Card style={{ marginBottom: 20 }}>
-        <Text style={{ color: COLORS.text, fontSize: 15, fontFamily: "Inter_500Medium" }}>
+        <Text style={{ color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium }}>
           Two-factor authentication
         </Text>
-        <Text style={{ color: status.is_enabled ? COLORS.success : COLORS.muted, fontSize: 13, marginTop: 6 }}>
+        <Text style={{ color: status.is_enabled ? COLORS.success : COLORS.muted, fontSize: fontSize.caption, marginTop: 6 }}>
           {status.is_enabled ? "On" : "Off"}
         </Text>
       </Card>
@@ -47,12 +67,12 @@ export default function Security() {
         <>
           <Card style={{ marginBottom: 16 }}>
             <Label>Step 1 · add to your app</Label>
-            <Text style={{ color: COLORS.muted, fontSize: 13, marginTop: 8, lineHeight: 19 }}>
+            <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 8, lineHeight: 19 }}>
               Open Google Authenticator, Authy, or 1Password and add this key manually.
             </Text>
             <Text
               selectable
-              style={{ color: COLORS.primary, fontSize: 15, fontFamily: "JetBrainsMono_500Medium", marginTop: 12, letterSpacing: 1 }}
+              style={{ color: COLORS.primary, fontSize: fontSize.body, fontFamily: font.mono, marginTop: 12, letterSpacing: 1 }}
             >
               {setup.secret}
             </Text>
@@ -61,12 +81,12 @@ export default function Security() {
 
           <Card style={{ marginBottom: 16 }}>
             <Label>Step 2 · save your backup codes</Label>
-            <Text style={{ color: COLORS.muted, fontSize: 13, marginTop: 8, lineHeight: 19 }}>
+            <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 8, lineHeight: 19 }}>
               Each code works once if you lose access to your authenticator.
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
               {setup.backup_codes.map((c: string) => (
-                <Text key={c} style={{ color: COLORS.text, fontSize: 13, fontFamily: "JetBrainsMono_500Medium", width: "46%" }}>
+                <Text key={c} style={{ color: COLORS.text, fontSize: fontSize.caption, fontFamily: font.mono, width: "46%" }}>
                   {c}
                 </Text>
               ))}
@@ -102,7 +122,7 @@ export default function Security() {
         </>
       )}
 
-      {error ? <Text style={{ color: COLORS.danger, fontSize: 13, marginTop: 16 }}>{error}</Text> : null}
+      {error ? <Text style={{ color: COLORS.danger, fontSize: fontSize.caption, marginTop: 16 }}>{error}</Text> : null}
     </Screen>
   );
 }

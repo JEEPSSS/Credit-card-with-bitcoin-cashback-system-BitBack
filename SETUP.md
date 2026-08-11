@@ -58,28 +58,33 @@ Demo login: `demo@bitback.app` / `demo12345`
 ## 3. Confirm it all works
 
 ```bash
-pytest        # 91 tests, no server needed
-ruff check .  # lint
+pytest                    # 89 backend tests, no server needed
+ruff check app main.py seed_demo.py tests
+cd mobile && npm test     # 15 front-end tests
 ```
 
-Every test builds its own in-memory database, so this is safe to run at any time
-and does not touch `bitback.db`.
+Every backend test builds its own in-memory database, so this is safe to run at
+any time and does not touch `bitback.db`. The same three commands run in CI on
+every push, along with a Metro bundle to catch an import that only breaks at
+build time.
 
 ## Things that commonly go wrong
 
 **`npm install` fails on a version.** The Expo SDK moves quickly and a pinned
 version may have been superseded. Every dependency in `mobile/package.json` is
-currently aligned to Expo SDK 54 (React Native 0.81.5), which is what Expo Go
-installs from the app stores, and installs cleanly with a plain `npm install` —
-no `--legacy-peer-deps` needed. If a future SDK bump
-breaks it again, run `npx expo install --fix`, which rewrites every dependency
-to the version matching your installed SDK.
+aligned to Expo SDK 54 (React Native 0.81.5), which is what Expo Go installs
+from the app stores, and installs cleanly with a plain `npm install` or
+`npm ci` — no `--legacy-peer-deps`. If a future SDK bump breaks it, run
+`npx expo install --fix`, which rewrites every dependency to the version
+matching your installed SDK.
 
 Two things are load-bearing and easy to undo by accident:
 
-- `react` is a caret range (`^19.2.3`), not an exact pin. Expo's dev log-box
-  pulls in a `react-dom` that requires a newer patch than the SDK's nominal
-  `19.2.3`; an exact pin makes npm fail to resolve.
+- `react` and `react-dom` are both pinned to `19.1.0`. React itself is what the
+  SDK expects; `react-dom` has to be declared explicitly because Expo's dev
+  log-box pulls one in transitively, and left to itself npm resolves a newer
+  patch whose peer range the pinned `react` cannot satisfy. That is what makes
+  `npm ci` fail with `Missing: react-dom from lock file`.
 - `babel-preset-expo` is declared in `devDependencies` even though `expo`
   already depends on it. Without the explicit entry npm nests it under
   `node_modules/expo/`, where the root `babel.config.js` cannot resolve it and

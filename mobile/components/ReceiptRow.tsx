@@ -2,7 +2,7 @@ import { View, Text, Pressable } from "react-native";
 import * as Icons from "lucide-react-native";
 import { COLORS } from "./ui";
 import { sats, relativeTime, titleCase } from "@/lib/format";
-import { CATEGORY_ICON } from "@/lib/theme";
+import { CATEGORY_ICON, font, fontSize, iconSize } from "@/lib/theme";
 
 /**
  * A transaction is a line on a statement, not a card. Rows share one hairline
@@ -43,26 +43,26 @@ export function ReceiptRow({
           alignItems: "center", justifyContent: "center", marginRight: 12,
         }}
       >
-        <Icon size={17} color={COLORS.muted} />
+        <Icon size={iconSize.md} color={COLORS.muted} />
       </View>
 
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Text numberOfLines={1} style={{ color: COLORS.text, fontSize: 15, fontFamily: "Inter_500Medium", flexShrink: 1 }}>
+          <Text numberOfLines={1} style={{ color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium, flexShrink: 1 }}>
             {merchant}
           </Text>
-          {flagged && <Icons.ShieldAlert size={13} color={COLORS.danger} />}
+          {flagged && <Icons.ShieldAlert size={iconSize.xs} color={COLORS.danger} />}
         </View>
-        <Text style={{ color: COLORS.muted, fontSize: 12, marginTop: 2 }}>
+        <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 2 }}>
           {titleCase(category)} · {relativeTime(createdAt)}
         </Text>
       </View>
 
       <View style={{ alignItems: "flex-end" }}>
-        <Text style={{ color: COLORS.primary, fontSize: 14, fontFamily: "JetBrainsMono_500Medium", fontVariant: ["tabular-nums"] }}>
+        <Text style={{ color: COLORS.primary, fontSize: fontSize.caption, fontFamily: font.mono, fontVariant: ["tabular-nums"] }}>
           +{sats(satsEarned)}
         </Text>
-        <Text style={{ color: COLORS.muted, fontSize: 12, fontFamily: "JetBrainsMono_500Medium", fontVariant: ["tabular-nums"], marginTop: 2 }}>
+        <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, fontFamily: font.mono, fontVariant: ["tabular-nums"], marginTop: 2 }}>
           ${amountFiat.toFixed(2)}
         </Text>
       </View>

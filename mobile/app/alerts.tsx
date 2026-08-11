@@ -1,27 +1,39 @@
 import { useCallback, useState } from "react";
 import { View, Text, Pressable } from "react-native";
-import { useFocusEffect } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import { miscAPI } from "@/lib/api";
 import { usd } from "@/lib/format";
-import { Button, Card, COLORS, Empty, Header, Loading, Num, Screen } from "@/components/ui";
+import { useApi } from "@/lib/useApi";
+import { Button, Card, COLORS, Empty, ErrorNote, Header, Loading, Num, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
+import { fontSize, iconSize } from "@/lib/theme";
 
 export default function Alerts() {
-  const [d, setD] = useState<any>(null);
   const [price, setPrice] = useState("");
   const [direction, setDirection] = useState<"above" | "below">("above");
 
-  const load = useCallback(async () => {
-    const [alerts, btc] = await Promise.all([miscAPI.alerts(), miscAPI.btcPrice()]);
-    setD({ alerts, btc });
-  }, []);
+  const state = useApi(
+    useCallback(async () => {
+      const [alerts, btc] = await Promise.all([miscAPI.alerts(), miscAPI.btcPrice()]);
+      return { alerts, btc };
+    }, []),
+  );
 
-  useFocusEffect(useCallback(() => { load().catch(() => {}); }, [load]));
-  if (!d) return <Screen><Loading /></Screen>;
+  if (state.error && !state.data) {
+    return (
+      <Screen>
+        <Header back title="Price alerts" />
+        <ErrorNote message={state.error} onRetry={state.reload} />
+      </Screen>
+    );
+  }
+  if (!state.data) return <Screen><Loading /></Screen>;
+
+  const d = state.data;
+  const load = state.reload;
 
   return (
-    <Screen onRefresh={load}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
       <Header back title="Price alerts" subtitle={`Bitcoin is ${usd(d.btc.price)} right now.`} />
 
       <Card style={{ marginBottom: 24 }}>
@@ -35,10 +47,10 @@ export default function Alerts() {
               style={{
                 flex: 1, minHeight: 40, alignItems: "center", justifyContent: "center", borderRadius: 8,
                 borderWidth: 1, borderColor: direction === dir ? COLORS.primary : COLORS.border,
-                backgroundColor: direction === dir ? "#2A1D08" : "transparent",
+                backgroundColor: direction === dir ? COLORS.accentSurface : "transparent",
               }}
             >
-              <Text style={{ color: direction === dir ? COLORS.primary : COLORS.muted, fontSize: 14 }}>
+              <Text style={{ color: direction === dir ? COLORS.primary : COLORS.muted, fontSize: fontSize.caption }}>
                 Goes {dir}
               </Text>
             </Pressable>
@@ -65,10 +77,10 @@ export default function Alerts() {
               }}
             >
               <View style={{ flex: 1 }}>
-                <Num size={15} color={a.is_triggered ? COLORS.muted : COLORS.text}>
+                <Num size={fontSize.body} color={a.is_triggered ? COLORS.muted : COLORS.text}>
                   {usd(a.target_price)}
                 </Num>
-                <Text style={{ color: COLORS.muted, fontSize: 12, marginTop: 2 }}>
+                <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 2 }}>
                   Goes {a.direction}{a.is_triggered ? " · triggered" : ""}
                 </Text>
               </View>
@@ -79,7 +91,7 @@ export default function Alerts() {
                 accessibilityLabel={`Delete alert at ${usd(a.target_price)}`}
                 style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
               >
-                <Trash2 size={16} color={COLORS.muted} />
+                <Trash2 size={iconSize.sm} color={COLORS.muted} />
               </Pressable>
             </View>
           ))}

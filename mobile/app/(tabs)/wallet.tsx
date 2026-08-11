@@ -1,115 +1,171 @@
 import { useCallback, useState } from "react";
-import { View, Text, Pressable, Dimensions } from "react-native";
-import { useFocusEffect } from "expo-router";
-import { CartesianChart, Area, Line } from "victory-native";
-import { walletAPI, miscAPI } from "@/lib/api";
-import { sats, usd, relativeTime, titleCase } from "@/lib/format";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Area, CartesianChart, Line } from "victory-native";
+
+import { miscAPI, walletAPI } from "@/lib/api";
+import { relativeTime, sats, titleCase, usd } from "@/lib/format";
+import { COLORS, MIN_CONTROL_HEIGHT, font, fontSize, radius, space } from "@/lib/theme";
+import { useApi } from "@/lib/useApi";
 import { Odometer } from "@/components/Odometer";
-import { Card, COLORS, Divider, Header, Label, Loading, Num, Screen } from "@/components/ui";
+import { Async, Card, Divider, Header, Label, Num, Screen } from "@/components/ui";
 
 const PERIODS = ["7d", "30d", "90d", "all"] as const;
+type Period = (typeof PERIODS)[number];
+
+const CHART_HEIGHT = 180;
+const CHART_FILL = "rgba(247,147,26,0.18)";
+const CHART_ANIMATION = { type: "timing", duration: 350 } as const;
 
 export default function WalletScreen() {
-  const [period, setPeriod] = useState<string>("30d");
-  const [data, setData] = useState<any>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [period, setPeriod] = useState<Period>("30d");
 
-  const load = useCallback(async (p: string) => {
-    const [balance, growth, ledger, price] = await Promise.all([
-      walletAPI.balance(), walletAPI.growth(p), walletAPI.transactions(), miscAPI.btcPrice(),
-    ]);
-    setData({ balance, growth, ledger, price });
-  }, []);
-
-  useFocusEffect(useCallback(() => { load(period).catch(() => {}); }, [load, period]));
-
-  if (!data) return <Screen><Loading /></Screen>;
-
-  // Explicitly typed: `data` is `any`, so without this the array widens to
-  // `any[]` and CartesianChart's xKey/yKeys generics resolve to `never`.
-  const points: { x: number; y: number }[] = data.growth.points.map(
-    (p: any, i: number) => ({ x: i, y: p.sats as number })
+  const state = useApi(
+    useCallback(async () => {
+      const [balance, growth, ledger, price] = await Promise.all([
+        walletAPI.balance(),
+        walletAPI.growth(period),
+        walletAPI.transactions(),
+        miscAPI.btcPrice(),
+      ]);
+      return { balance, growth, ledger, price };
+    }, [period]),
+    [period],
   );
-  const change = data.growth.growth_sats;
 
   return (
-    <Screen
-      onRefresh={async () => { setRefreshing(true); await load(period).catch(() => {}); setRefreshing(false); }}
-      refreshing={refreshing}
-    >
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
       <Header title="Wallet" />
 
-      <Label>Total stacked</Label>
-      <View style={{ marginTop: 10 }}>
-        <Odometer value={data.balance.balance_sats} fontSize={40} suffix="sats" />
-      </View>
-      <Text style={{ color: COLORS.muted, fontSize: 15, marginTop: 6, fontFamily: "JetBrainsMono_500Medium" }}>
-        {usd(data.balance.balance_usd)} · {data.balance.balance_btc.toFixed(8)} BTC
-      </Text>
+      <Async state={state}>
+        {({ balance, growth, ledger }) => {
+          const points = growth.points.map((p, i) => ({ x: i, y: p.sats }));
+          return (
+            <>
+              <Label>Total stacked</Label>
+              <View style={{ marginTop: space.sm + 2 }}>
+                <Odometer value={balance.balance_sats} fontSize={fontSize.display} suffix="sats" />
+              </View>
+              <Text style={styles.subBalance}>
+                {usd(balance.balance_usd)} · {balance.balance_btc.toFixed(8)} BTC
+              </Text>
 
-      <View style={{ flexDirection: "row", gap: 6, marginTop: 24, marginBottom: 16 }}>
-        {PERIODS.map((p) => (
-          <Pressable
-            key={p}
-            onPress={() => setPeriod(p)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: period === p }}
-            style={{
-              flex: 1, minHeight: 36, alignItems: "center", justifyContent: "center", borderRadius: 8,
-              backgroundColor: period === p ? COLORS.elevated : "transparent",
-              borderWidth: 1, borderColor: period === p ? COLORS.border : "transparent",
-            }}
-          >
-            <Text style={{ color: period === p ? COLORS.text : COLORS.muted, fontSize: 13 }}>{p.toUpperCase()}</Text>
-          </Pressable>
-        ))}
-      </View>
+              <View style={styles.periods}>
+                {PERIODS.map((p) => {
+                  const active = period === p;
+                  return (
+                    <Pressable
+                      key={p}
+                      onPress={() => setPeriod(p)}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: active }}
+                      style={[
+                        styles.period,
+                        {
+                          backgroundColor: active ? COLORS.elevated : "transparent",
+                          borderColor: active ? COLORS.border : "transparent",
+                        },
+                      ]}
+                    >
+                      <Text style={{ color: active ? COLORS.text : COLORS.muted, fontSize: fontSize.caption }}>
+                        {p.toUpperCase()}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-      <Card style={{ padding: 12 }}>
-        <View style={{ height: 180 }}>
-          {points.length > 1 && (
-            <CartesianChart data={points} xKey="x" yKeys={["y"]}>
-              {({ points: cp, chartBounds }) => (
-                <>
-                  <Area
-                    points={cp.y}
-                    y0={chartBounds.bottom}
-                    color="rgba(247,147,26,0.18)"
-                    animate={{ type: "timing", duration: 350 }}
-                  />
-                  <Line points={cp.y} color={COLORS.primary} strokeWidth={2} animate={{ type: "timing", duration: 350 }} />
-                </>
-              )}
-            </CartesianChart>
-          )}
-        </View>
-        <Text style={{ color: COLORS.muted, fontSize: 12, marginTop: 8 }}>
-          {change >= 0 ? "+" : ""}{sats(change)} sats over this period
-        </Text>
-      </Card>
+              <Card style={{ padding: space.md }}>
+                <View style={{ height: CHART_HEIGHT }}>
+                  {points.length > 1 && (
+                    <CartesianChart data={points} xKey="x" yKeys={["y"]}>
+                      {({ points: cp, chartBounds }) => (
+                        <>
+                          <Area
+                            points={cp.y}
+                            y0={chartBounds.bottom}
+                            color={CHART_FILL}
+                            animate={CHART_ANIMATION}
+                          />
+                          <Line
+                            points={cp.y}
+                            color={COLORS.primary}
+                            strokeWidth={2}
+                            animate={CHART_ANIMATION}
+                          />
+                        </>
+                      )}
+                    </CartesianChart>
+                  )}
+                </View>
+                <Text style={styles.chartCaption}>
+                  {growth.growth_sats >= 0 ? "+" : ""}{sats(growth.growth_sats)} sats over this period
+                </Text>
+              </Card>
 
-      <View style={{ marginTop: 28, marginBottom: 4 }}>
-        <Label>Ledger</Label>
-      </View>
-      <Divider />
-      {data.ledger.map((e: any, i: number) => (
-        <View
-          key={e.id}
-          style={{
-            flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-            paddingVertical: 14, borderBottomWidth: i === data.ledger.length - 1 ? 0 : 1,
-            borderBottomColor: COLORS.border,
-          }}
-        >
-          <View>
-            <Text style={{ color: COLORS.text, fontSize: 14 }}>{titleCase(e.type.replace(/_/g, " "))}</Text>
-            <Text style={{ color: COLORS.muted, fontSize: 12, marginTop: 2 }}>{relativeTime(e.created_at)}</Text>
-          </View>
-          <Num size={14} color={e.amount_sats >= 0 ? COLORS.primary : COLORS.muted}>
-            {e.amount_sats >= 0 ? "+" : ""}{sats(e.amount_sats)}
-          </Num>
-        </View>
-      ))}
+              <View style={styles.ledgerHead}>
+                <Label>Ledger</Label>
+              </View>
+              <Divider />
+              {ledger.map((entry, i) => (
+                <View
+                  key={entry.id}
+                  style={[
+                    styles.ledgerRow,
+                    { borderBottomWidth: i === ledger.length - 1 ? 0 : 1 },
+                  ]}
+                >
+                  <View>
+                    <Text style={styles.ledgerType}>
+                      {titleCase(entry.type.replace(/_/g, " "))}
+                    </Text>
+                    <Text style={styles.ledgerTime}>{relativeTime(entry.created_at)}</Text>
+                  </View>
+                  <Num
+                    size={fontSize.caption}
+                    color={entry.amount_sats >= 0 ? COLORS.primary : COLORS.muted}
+                  >
+                    {entry.amount_sats >= 0 ? "+" : ""}{sats(entry.amount_sats)}
+                  </Num>
+                </View>
+              ))}
+            </>
+          );
+        }}
+      </Async>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  subBalance: {
+    color: COLORS.muted,
+    fontSize: fontSize.body,
+    marginTop: space.xs + 2,
+    fontFamily: font.mono,
+  },
+  periods: {
+    flexDirection: "row",
+    gap: space.xs + 2,
+    marginTop: space.xl,
+    marginBottom: space.lg,
+  },
+  period: {
+    flex: 1,
+    minHeight: MIN_CONTROL_HEIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.control,
+    borderWidth: 1,
+  },
+  chartCaption: { color: COLORS.muted, fontSize: fontSize.caption, marginTop: space.sm },
+  ledgerHead: { marginTop: space.xl + space.xs, marginBottom: space.xs },
+  ledgerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: space.md + 2,
+    borderBottomColor: COLORS.border,
+  },
+  ledgerType: { color: COLORS.text, fontSize: fontSize.caption },
+  ledgerTime: { color: COLORS.muted, fontSize: fontSize.caption, marginTop: 2 },
+});

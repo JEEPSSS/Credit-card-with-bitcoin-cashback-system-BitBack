@@ -1,3 +1,5 @@
+import { RISK_FLAG_THRESHOLD, RISK_WATCH_THRESHOLD, color } from "./theme";
+
 /** Digit grouping everywhere. A raw 640528 is unreadable; 640,528 is not. */
 export const sats = (n: number) => Math.round(n ?? 0).toLocaleString("en-US");
 
@@ -25,9 +27,13 @@ export function relativeTime(iso: string) {
 
 export const titleCase = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
-/** Risk bands mirror the backend: >=60 flags, 30-59 watch, below is normal. */
-export function riskBand(score: number) {
-  if (score >= 60) return { label: "High", color: "#E5484D" };
-  if (score >= 30) return { label: "Medium", color: "#F7931A" };
-  return { label: "Low", color: "#30A46C" };
+/**
+ * Risk bands mirror the backend's ANOMALY_THRESHOLD: >=60 flags, 30-59 watch,
+ * below is normal. The thresholds and colours come from the theme so this
+ * cannot drift away from the rest of the app.
+ */
+export function riskBand(score: number): { label: "High" | "Medium" | "Low"; color: string } {
+  if (score >= RISK_FLAG_THRESHOLD) return { label: "High", color: color.danger };
+  if (score >= RISK_WATCH_THRESHOLD) return { label: "Medium", color: color.primary };
+  return { label: "Low", color: color.success };
 }

@@ -8,3 +8,7 @@ node_modules/
 .expo/
 dist/
 .DS_Store
+
+# expo
+mobile/.expo/
+mobile/dist/

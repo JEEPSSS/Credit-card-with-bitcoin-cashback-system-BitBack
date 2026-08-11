@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
-import { authAPI } from "@/lib/api";
+import { messageFor, authAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Card, COLORS, Header, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
+import { fontSize } from "@/lib/theme";
 
 export default function Register() {
   const { signIn } = useAuth();
@@ -24,9 +25,9 @@ export default function Register() {
         password: form.password,
         referral_code: form.referral_code.trim() || undefined,
       });
-      await signIn(r.access_token, r.user);
-    } catch (e: any) {
-      setError(e.friendlyMessage);
+      await signIn(r);
+    } catch (e) {
+      setError(messageFor(e));
     } finally {
       setBusy(false);
     }
@@ -54,8 +55,8 @@ export default function Register() {
         style={{ marginTop: 8 }}
       />
       {error ? (
-        <Card style={{ marginTop: 20, borderColor: "#4A2020" }}>
-          <Text style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}>{error}</Text>
+        <Card style={{ marginTop: 20, borderColor: COLORS.dangerBorder }}>
+          <Text style={{ color: COLORS.text, fontSize: fontSize.caption, lineHeight: 20 }}>{error}</Text>
         </Card>
       ) : null}
     </Screen>

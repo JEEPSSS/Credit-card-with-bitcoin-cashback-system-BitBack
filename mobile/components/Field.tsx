@@ -1,16 +1,16 @@
 import { View, Text, TextInput, TextInputProps } from "react-native";
-import { COLORS } from "./ui";
-import { MIN_TOUCH_TARGET } from "@/lib/theme";
+
+import { COLORS, MIN_TOUCH_TARGET, font, fontSize, radius, space } from "@/lib/theme";
 
 export function Field({
   label, hint, mono, ...props
 }: TextInputProps & { label: string; hint?: string; mono?: boolean }) {
   return (
     <View style={{ marginBottom: 16 }}>
-      <Text style={{ color: COLORS.muted, fontSize: 13, marginBottom: 8 }}>{label}</Text>
+      <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginBottom: 8 }}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
-        placeholderTextColor="#5C5C63"
+        placeholderTextColor={COLORS.placeholder}
         {...props}
         style={{
           minHeight: MIN_TOUCH_TARGET,
@@ -20,11 +20,11 @@ export function Field({
           borderRadius: 8,
           paddingHorizontal: 14,
           color: COLORS.text,
-          fontSize: 16,
-          fontFamily: mono ? "JetBrainsMono_500Medium" : "Inter_400Regular",
+          fontSize: fontSize.body,
+          fontFamily: mono ? font.mono : font.regular,
         }}
       />
-      {hint ? <Text style={{ color: COLORS.muted, fontSize: 12, marginTop: 6 }}>{hint}</Text> : null}
+      {hint ? <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 6 }}>{hint}</Text> : null}
     </View>
   );
 }

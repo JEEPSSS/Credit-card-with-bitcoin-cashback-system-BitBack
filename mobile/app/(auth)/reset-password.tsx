@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { authAPI } from "@/lib/api";
 import { Button, Card, COLORS, Header, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
+import { fontSize } from "@/lib/theme";
 
 /** Five-segment meter. Length is weighted twice because it dominates entropy. */
 function strength(pw: string) {
@@ -65,7 +66,7 @@ export default function ResetPassword() {
           />
         ))}
       </View>
-      {pw.length > 0 && <Text style={{ color: COLORS.muted, fontSize: 12, marginBottom: 16 }}>{s.label}</Text>}
+      {pw.length > 0 && <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginBottom: 16 }}>{s.label}</Text>}
       <Field
         label="Confirm password"
         value={confirm}
@@ -76,8 +77,8 @@ export default function ResetPassword() {
       />
       <Button label="Update password" onPress={submit} loading={busy} disabled={!matches || pw.length < 8} />
       {error ? (
-        <Card style={{ marginTop: 20, borderColor: "#4A2020" }}>
-          <Text style={{ color: COLORS.text, fontSize: 14 }}>{error}</Text>
+        <Card style={{ marginTop: 20, borderColor: COLORS.dangerBorder }}>
+          <Text style={{ color: COLORS.text, fontSize: fontSize.caption }}>{error}</Text>
         </Card>
       ) : null}
     </Screen>

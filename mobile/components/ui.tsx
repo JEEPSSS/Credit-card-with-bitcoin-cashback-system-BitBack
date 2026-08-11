@@ -1,24 +1,17 @@
 import { ReactNode } from "react";
 import {
-  ActivityIndicator, Pressable, ScrollView, Text, View, ViewStyle, RefreshControl,
+  ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text,
+  View, ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { MIN_TOUCH_TARGET } from "@/lib/theme";
 
-export const COLORS = {
-  bg: "#0A0A0B",
-  card: "#141416",
-  elevated: "#1C1C1F",
-  border: "#2A2A2E",
-  text: "#F2F1EE",
-  muted: "#93939A",
-  primary: "#F7931A",
-  success: "#30A46C",
-  danger: "#E5484D",
-};
+import { COLORS, MIN_TOUCH_TARGET, font, fontSize, iconSize, radius, space } from "@/lib/theme";
+import type { AsyncState } from "@/lib/useApi";
+
+export { COLORS };
 
 export function Screen({
   children, scroll = true, onRefresh, refreshing = false, padded = true,
@@ -26,9 +19,13 @@ export function Screen({
   children: ReactNode; scroll?: boolean; onRefresh?: () => void;
   refreshing?: boolean; padded?: boolean;
 }) {
-  const inner = <View style={{ paddingHorizontal: padded ? 16 : 0, paddingBottom: 32 }}>{children}</View>;
+  const inner = (
+    <View style={{ paddingHorizontal: padded ? space.lg : 0, paddingBottom: space["2xl"] }}>
+      {children}
+    </View>
+  );
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
+    <SafeAreaView edges={["top"]} style={styles.screen}>
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -49,39 +46,39 @@ export function Screen({
 
 export function Header({ title, subtitle, back }: { title: string; subtitle?: string; back?: boolean }) {
   return (
-    <View style={{ paddingTop: 8, paddingBottom: 20 }}>
+    <View style={styles.header}>
       {back && (
         <Pressable
           onPress={() => router.back()}
           hitSlop={12}
           accessibilityLabel="Go back"
           accessibilityRole="button"
-          style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, justifyContent: "center", marginLeft: -12 }}
+          style={styles.backButton}
         >
-          <ChevronLeft size={24} color={COLORS.text} />
+          <ChevronLeft size={iconSize.xl} color={COLORS.text} />
         </Pressable>
       )}
-      <Text style={{ color: COLORS.text, fontSize: 25, fontFamily: "Inter_500Medium" }}>{title}</Text>
-      {subtitle ? (
-        <Text style={{ color: COLORS.muted, fontSize: 14, marginTop: 4, lineHeight: 20 }}>{subtitle}</Text>
-      ) : null}
+      <Text style={styles.headerTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
     </View>
   );
 }
 
-export function Card({ children, style, onPress }: { children: ReactNode; style?: ViewStyle; onPress?: () => void }) {
-  const body = (
-    <View
-      style={[
-        { backgroundColor: COLORS.card, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 16 },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
+export function Card({
+  children, style, onPress, tone = "default",
+}: {
+  children: ReactNode; style?: ViewStyle; onPress?: () => void;
+  tone?: "default" | "danger" | "accent";
+}) {
+  const borderColor =
+    tone === "danger" ? COLORS.dangerBorder : tone === "accent" ? COLORS.accentBorder : COLORS.border;
+  const body = <View style={[styles.card, { borderColor }, style]}>{children}</View>;
   return onPress ? (
-    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+    >
       {body}
     </Pressable>
   ) : (
@@ -95,27 +92,23 @@ export function Button({
   label: string; onPress: () => void; variant?: "primary" | "secondary" | "ghost";
   disabled?: boolean; loading?: boolean; style?: ViewStyle;
 }) {
-  const bg = variant === "primary" ? COLORS.primary : variant === "secondary" ? COLORS.elevated : "transparent";
-  const fg = variant === "primary" ? "#1A1206" : COLORS.text;
+  const bg =
+    variant === "primary" ? COLORS.primary : variant === "secondary" ? COLORS.elevated : "transparent";
+  const fg = variant === "primary" ? COLORS.onPrimary : COLORS.text;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
       disabled={disabled || loading}
       onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
       style={({ pressed }) => [
+        styles.button,
         {
-          minHeight: MIN_TOUCH_TARGET,
           backgroundColor: bg,
-          borderRadius: 8,
-          alignItems: "center",
-          justifyContent: "center",
-          paddingHorizontal: 20,
           borderWidth: variant === "ghost" ? 1 : 0,
-          borderColor: COLORS.border,
           opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
         },
         style,
@@ -124,47 +117,41 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={fg} />
       ) : (
-        <Text style={{ color: fg, fontSize: 16, fontFamily: "Inter_500Medium" }}>{label}</Text>
+        <Text style={[styles.buttonLabel, { color: fg }]}>{label}</Text>
       )}
     </Pressable>
   );
 }
 
 /** Right-aligned mono numeral so columns of figures line up down the screen. */
-export function Num({ children, size = 16, color = COLORS.text }: { children: ReactNode; size?: number; color?: string }) {
-  return (
-    <Text style={{ color, fontSize: size, fontFamily: "JetBrainsMono_500Medium", fontVariant: ["tabular-nums"] }}>
-      {children}
-    </Text>
-  );
+export function Num({
+  children, size = fontSize.body, color = COLORS.text,
+}: {
+  children: ReactNode; size?: number; color?: string;
+}) {
+  return <Text style={[styles.num, { fontSize: size, color }]}>{children}</Text>;
 }
 
 export function Label({ children }: { children: ReactNode }) {
-  return (
-    <Text style={{ color: COLORS.muted, fontSize: 12, letterSpacing: 0.4, textTransform: "uppercase" }}>
-      {children}
-    </Text>
-  );
+  return <Text style={styles.label}>{children}</Text>;
 }
 
 export function Divider() {
-  return <View style={{ height: 1, backgroundColor: COLORS.border }} />;
+  return <View style={styles.divider} />;
 }
 
 export function Empty({ title, body }: { title: string; body: string }) {
   return (
-    <View style={{ paddingVertical: 48, alignItems: "center" }}>
-      <Text style={{ color: COLORS.text, fontSize: 16, fontFamily: "Inter_500Medium" }}>{title}</Text>
-      <Text style={{ color: COLORS.muted, fontSize: 14, marginTop: 6, textAlign: "center", lineHeight: 20 }}>
-        {body}
-      </Text>
+    <View style={styles.empty}>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptyBody}>{body}</Text>
     </View>
   );
 }
 
 export function Loading() {
   return (
-    <View style={{ paddingVertical: 64, alignItems: "center" }}>
+    <View style={styles.loading}>
       <ActivityIndicator color={COLORS.muted} />
     </View>
   );
@@ -172,9 +159,83 @@ export function Loading() {
 
 export function ErrorNote({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <Card style={{ borderColor: "#4A2020" }}>
-      <Text style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}>{message}</Text>
-      {onRetry && <Button label="Try again" variant="secondary" onPress={onRetry} style={{ marginTop: 12 }} />}
+    <Card tone="danger">
+      <Text style={styles.errorText}>{message}</Text>
+      {onRetry && (
+        <Button label="Try again" variant="secondary" onPress={onRetry} style={{ marginTop: space.md }} />
+      )}
     </Card>
   );
 }
+
+/**
+ * Renders one of three states for a screen's data: still loading, failed with a
+ * retry, or ready. Screens used to hold `if (!data) return <Loading />`, which
+ * meant a failed request rendered a spinner forever.
+ */
+export function Async<T>({
+  state, children, empty,
+}: {
+  state: AsyncState<T>;
+  children: (data: T) => ReactNode;
+  empty?: ReactNode;
+}) {
+  if (state.error && state.data === null) {
+    return <ErrorNote message={state.error} onRetry={state.reload} />;
+  }
+  if (state.loading && state.data === null) return <Loading />;
+  if (state.data === null) return <>{empty ?? null}</>;
+  return <>{children(state.data)}</>;
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.bg },
+  header: { paddingTop: space.sm, paddingBottom: space.xl },
+  backButton: {
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    justifyContent: "center",
+    marginLeft: -space.md,
+  },
+  headerTitle: { color: COLORS.text, fontSize: fontSize.title, fontFamily: font.medium },
+  headerSubtitle: {
+    color: COLORS.muted,
+    fontSize: fontSize.caption,
+    marginTop: space.xs,
+    lineHeight: 20,
+  },
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    padding: space.lg,
+  },
+  button: {
+    minHeight: MIN_TOUCH_TARGET,
+    borderRadius: radius.control,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: space.xl,
+    borderColor: COLORS.border,
+  },
+  buttonLabel: { fontSize: fontSize.body, fontFamily: font.medium },
+  num: { fontFamily: font.mono, fontVariant: ["tabular-nums"] },
+  label: {
+    color: COLORS.muted,
+    fontSize: fontSize.caption,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  divider: { height: 1, backgroundColor: COLORS.border },
+  empty: { paddingVertical: space["3xl"], alignItems: "center" },
+  emptyTitle: { color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium },
+  emptyBody: {
+    color: COLORS.muted,
+    fontSize: fontSize.caption,
+    marginTop: space.sm,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  loading: { paddingVertical: 64, alignItems: "center" },
+  errorText: { color: COLORS.text, fontSize: fontSize.caption, lineHeight: 20 },
+});

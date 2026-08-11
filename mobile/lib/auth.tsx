@@ -1,18 +1,18 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { router } from "expo-router";
-import { authAPI, tokenStore, setUnauthorizedHandler } from "./api";
 
-type User = { id: number; email: string; display_name: string };
+import { authAPI, setUnauthorizedHandler, tokenStore } from "./api";
+import type { TokenResponse, User } from "./types";
 
 type AuthState = {
   user: User | null;
   loading: boolean;
-  signIn: (token: string, user: User) => Promise<void>;
+  signIn: (response: TokenResponse) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 };
 
-const Ctx = createContext<AuthState>(null as any);
+const Ctx = createContext<AuthState>(null as unknown as AuthState);
 export const useAuth = () => useContext(Ctx);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -25,9 +25,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.replace("/(auth)/login");
   }, []);
 
-  const signIn = useCallback(async (token: string, u: User) => {
-    await tokenStore.set(token);
-    setUser(u);
+  /**
+   * Takes the whole token response rather than a token and a user.
+   *
+   * The backend omits `user` when a login still needs a second factor, so the
+   * two fields are not independently available and passing them separately let
+   * a null user reach the provider. Where it is missing - which should not
+   * happen on a completed sign-in - the profile is fetched rather than assumed.
+   */
+  const signIn = useCallback(async (response: TokenResponse) => {
+    await tokenStore.set(response.access_token);
+    setUser(response.user ?? (await authAPI.me()));
     router.replace("/(tabs)");
   }, []);
 
@@ -44,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       router.replace("/(auth)/login");
     });
-    (async () => {
+    void (async () => {
       const token = await tokenStore.get();
       if (token) await refresh();
       setLoading(false);

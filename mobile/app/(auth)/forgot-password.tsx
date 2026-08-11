@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { authAPI } from "@/lib/api";
 import { Button, Card, COLORS, Header, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
+import { fontSize } from "@/lib/theme";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -32,12 +33,12 @@ export default function ForgotPassword() {
         </>
       ) : (
         <Card>
-          <Text style={{ color: COLORS.text, fontSize: 15, lineHeight: 22 }}>
+          <Text style={{ color: COLORS.text, fontSize: fontSize.body, lineHeight: 22 }}>
             If that email has an account, a reset link is on its way.
           </Text>
           {token && (
             <>
-              <Text style={{ color: COLORS.muted, fontSize: 13, marginTop: 12, lineHeight: 19 }}>
+              <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 12, lineHeight: 19 }}>
                 There is no mail server in this build, so the token is returned directly for the demo.
               </Text>
               <Button

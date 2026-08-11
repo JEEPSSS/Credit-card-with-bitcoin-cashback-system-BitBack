@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import * as Icons from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { Button, COLORS, Header, Label, Screen } from "@/components/ui";
+import { fontSize, iconSize } from "@/lib/theme";
 
 const GROUPS = [
   {
@@ -55,10 +56,10 @@ export default function More() {
                     opacity: pressed ? 0.6 : 1,
                   })}
                 >
-                  <Icon size={17} color={COLORS.muted} />
-                  <Text style={{ color: COLORS.text, fontSize: 15, marginLeft: 12, flex: 1 }}>{item.label}</Text>
-                  {(item as any).note && <Text style={{ color: COLORS.muted, fontSize: 12, marginRight: 8 }}>{(item as any).note}</Text>}
-                  <Icons.ChevronRight size={16} color={COLORS.muted} />
+                  <Icon size={iconSize.md} color={COLORS.muted} />
+                  <Text style={{ color: COLORS.text, fontSize: fontSize.body, marginLeft: 12, flex: 1 }}>{item.label}</Text>
+                  {(item as any).note && <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginRight: 8 }}>{(item as any).note}</Text>}
+                  <Icons.ChevronRight size={iconSize.sm} color={COLORS.muted} />
                 </Pressable>
               );
             })}

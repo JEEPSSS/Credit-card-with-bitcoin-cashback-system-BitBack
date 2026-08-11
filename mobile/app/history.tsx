@@ -1,29 +1,44 @@
 import { useCallback, useEffect, useState } from "react";
 import { View, Text, Pressable, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { transactionAPI, miscAPI } from "@/lib/api";
+import { messageFor, miscAPI, transactionAPI } from "@/lib/api";
 import { titleCase } from "@/lib/format";
+import type { Category, Transaction } from "@/lib/types";
 import { ReceiptRow } from "@/components/ReceiptRow";
-import { COLORS, Empty, Header, Loading } from "@/components/ui";
+import { COLORS, Empty, ErrorNote, Header, Loading } from "@/components/ui";
+import { fontSize } from "@/lib/theme";
 
 export default function History() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<Transaction[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [filter, setFilter] = useState<string | undefined>();
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { miscAPI.categories().then(setCategories).catch(() => {}); }, []);
 
   const load = useCallback(async (p: number, cat?: string) => {
-    const r = await transactionAPI.list(p, cat);
-    setItems((prev) => (p === 1 ? r.items : [...prev, ...r.items]));
-    setHasMore(r.has_more);
-    setLoading(false);
+    try {
+      const r = await transactionAPI.list(p, cat);
+      setItems((prev) => (p === 1 ? r.items : [...prev, ...r.items]));
+      setHasMore(r.has_more);
+      setError(null);
+    } catch (e) {
+      setError(messageFor(e));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { setLoading(true); setPage(1); load(1, filter).catch(() => setLoading(false)); }, [filter, load]);
+  const reload = useCallback(() => {
+    setLoading(true);
+    setPage(1);
+    void load(1, filter);
+  }, [filter, load]);
+
+  useEffect(reload, [reload]);
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -46,10 +61,10 @@ export default function History() {
               style={{
                 minHeight: 36, paddingHorizontal: 14, borderRadius: 8, justifyContent: "center",
                 borderWidth: 1, borderColor: active ? COLORS.primary : COLORS.border,
-                backgroundColor: active ? "#2A1D08" : COLORS.card,
+                backgroundColor: active ? COLORS.accentSurface : COLORS.card,
               }}
             >
-              <Text style={{ color: active ? COLORS.primary : COLORS.muted, fontSize: 13 }}>{item.label}</Text>
+              <Text style={{ color: active ? COLORS.primary : COLORS.muted, fontSize: fontSize.caption }}>{item.label}</Text>
             </Pressable>
           );
         }}
@@ -57,6 +72,10 @@ export default function History() {
       />
       {loading ? (
         <Loading />
+      ) : error && items.length === 0 ? (
+        <View style={{ paddingHorizontal: 16 }}>
+          <ErrorNote message={error} onRetry={reload} />
+        </View>
       ) : items.length === 0 ? (
         <Empty title="Nothing here yet" body="Transactions in this category will show up here." />
       ) : (
@@ -76,10 +95,10 @@ export default function History() {
           )}
           onEndReachedThreshold={0.5}
           onEndReached={() => {
-            if (hasMore) {
+            if (hasMore && !error) {
               const next = page + 1;
               setPage(next);
-              load(next, filter).catch(() => {});
+              void load(next, filter);
             }
           }}
         />

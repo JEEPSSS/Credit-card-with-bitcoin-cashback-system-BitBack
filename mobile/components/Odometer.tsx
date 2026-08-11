@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Animated, {
-  useAnimatedStyle, useSharedValue, withTiming, withDelay, Easing,
+  Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming,
 } from "react-native-reanimated";
+
+import { COLORS, font, motion, numeric } from "@/lib/theme";
 
 /**
  * The balance is the one place the app spends its boldness, so it is the one
@@ -42,7 +44,7 @@ function DigitColumn({ value, height, fontSize, color, index }: {
               lineHeight: height,
               fontSize,
               color,
-              fontFamily: "JetBrainsMono_500Medium",
+              fontFamily: font.mono,
               fontVariant: ["tabular-nums"],
             }}
           >
@@ -55,7 +57,7 @@ function DigitColumn({ value, height, fontSize, color, index }: {
 }
 
 export function Odometer({
-  value, fontSize = 40, color = "#F2F1EE", suffix,
+  value, fontSize = 40, color = COLORS.text, suffix,
 }: {
   value: number; fontSize?: number; color?: string; suffix?: string;
 }) {
@@ -72,7 +74,7 @@ export function Odometer({
         c === "," ? (
           <Text
             key={`sep-${i}`}
-            style={{ height, lineHeight: height, fontSize, color, fontFamily: "JetBrainsMono_500Medium" }}
+            style={{ height, lineHeight: height, fontSize, color, fontFamily: font.mono }}
           >
             ,
           </Text>
@@ -88,7 +90,7 @@ export function Odometer({
         ),
       )}
       {suffix ? (
-        <Text style={{ color: "#93939A", fontSize: fontSize * 0.4, marginLeft: 8, marginBottom: fontSize * 0.12, alignSelf: "flex-end" }}>
+        <Text style={{ color: COLORS.muted, fontSize: fontSize * 0.4, marginLeft: 8, marginBottom: fontSize * 0.12, alignSelf: "flex-end" }}>
           {suffix}
         </Text>
       ) : null}
