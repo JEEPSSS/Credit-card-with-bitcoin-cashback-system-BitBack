@@ -1,6 +1,7 @@
 from datetime import datetime
-from typing import Any, Literal
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class ORMModel(BaseModel):
@@ -89,6 +90,17 @@ class WalletOut(BaseModel):
     balance_usd: float
     btc_price: float
     updated_at: datetime | None = None
+
+
+class PageMeta(BaseModel):
+    total: int
+    page: int
+    per_page: int
+    has_more: bool
+
+
+class TransactionPage(PageMeta):
+    items: list[TransactionOut]
 
 
 class GoalCreate(BaseModel):

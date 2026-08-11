@@ -24,12 +24,13 @@ cp .env.example .env
 Open `.env` and replace `SECRET_KEY` with any long random string. Then:
 
 ```bash
-python seed_demo.py
+alembic upgrade head       # create the schema
+python seed_demo.py        # 120 days of demo history
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Confirm it works: open `http://localhost:8000/docs` in a browser. You should see
-all 47 endpoints. Leave this terminal running.
+all 47 endpoints, grouped by tag. Leave this terminal running.
 
 `--host 0.0.0.0` is not optional. Bound to the default `127.0.0.1`, the server
 only accepts connections from the same machine and your phone cannot reach it.
@@ -57,17 +58,20 @@ Demo login: `demo@bitback.app` / `demo12345`
 ## 3. Confirm it all works
 
 ```bash
-python test_api.py
+pytest        # 91 tests, no server needed
+ruff check .  # lint
 ```
 
-Expect `47 passed, 0 failed`.
+Every test builds its own in-memory database, so this is safe to run at any time
+and does not touch `bitback.db`.
 
 ## Things that commonly go wrong
 
 **`npm install` fails on a version.** The Expo SDK moves quickly and a pinned
 version may have been superseded. Every dependency in `mobile/package.json` is
-currently aligned to Expo SDK 57 (React Native 0.86.2) and installs cleanly with
-a plain `npm install` — no `--legacy-peer-deps` needed. If a future SDK bump
+currently aligned to Expo SDK 54 (React Native 0.81.5), which is what Expo Go
+installs from the app stores, and installs cleanly with a plain `npm install` —
+no `--legacy-peer-deps` needed. If a future SDK bump
 breaks it again, run `npx expo install --fix`, which rewrites every dependency
 to the version matching your installed SDK.
 
@@ -111,8 +115,14 @@ Then in `.env`:
 DATABASE_URL=postgresql://youruser:yourpassword@localhost:5432/bitback
 ```
 
-Delete `bitback.db`, re-run `python seed_demo.py`, and restart. Tables are
-created automatically on startup.
+Then `alembic upgrade head` to build the schema, `python seed_demo.py` to load
+the demo account, and restart.
+
+Alembic owns the schema. `alembic revision --autogenerate -m "what changed"`
+after editing `app/models.py`, then `alembic upgrade head` to apply it. The
+startup handler also calls `create_all()` so a fresh checkout runs without any
+migration step, but that only creates missing tables — it will not alter an
+existing one, so migrations are the mechanism that actually evolves the schema.
 
 ## What is not built
 

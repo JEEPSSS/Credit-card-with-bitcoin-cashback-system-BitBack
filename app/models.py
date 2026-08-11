@@ -1,8 +1,33 @@
-from datetime import datetime, date
+"""ORM models.
+
+Two conventions run through this file.
+
+Satoshi amounts are `BigInteger`, never `Float`. A satoshi is the indivisible
+unit, so the type should say so - and reading a float balance back with `int()`
+truncates toward zero, which loses a satoshi the first time any non-integer
+value reaches the column. `Integer` is not enough either: Postgres `INTEGER` is
+four bytes and overflows at 2^31 sats, which is only 21.47 BTC.
+
+Timestamps are naive UTC via `app.clock.utcnow`. See that module for why
+`datetime.utcnow` and `date.today` are both avoided.
+"""
 from sqlalchemy import (
-    Column, Integer, String, Float, Boolean, DateTime, Date, ForeignKey, Text, Index
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
+
+from app.clock import utcnow
 from app.database import Base
 
 
@@ -12,8 +37,8 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     display_name = Column(String(120), nullable=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
     rewards = relationship("RewardEvent", back_populates="user", cascade="all, delete-orphan")
@@ -36,17 +61,25 @@ class Transaction(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     amount_fiat = Column(Float, nullable=False)
-    currency = Column(String(8), default="USD")
+    currency = Column(String(8), default="USD", nullable=False)
     category = Column(String(40), index=True, nullable=False)
     merchant = Column(String(120), nullable=False)
     btc_price_at_time = Column(Float, nullable=False)
-    sats_earned = Column(Integer, default=0)
-    status = Column(String(20), default="completed")
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    sats_earned = Column(BigInteger, default=0, nullable=False)
+    status = Column(String(20), default="completed", nullable=False)
+    # Client-supplied replay guard. A double-tap on "Confirm", or a retry after a
+    # timeout, must not pay out twice.
+    idempotency_key = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=utcnow, index=True, nullable=False)
 
     user = relationship("User", back_populates="transactions")
     reward = relationship("RewardEvent", uselist=False, back_populates="transaction")
     risk_score = relationship("TransactionRiskScore", uselist=False, cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "idempotency_key", name="uq_transaction_idempotency"),
+        Index("ix_transaction_user_created", "user_id", "created_at"),
+    )
 
 
 class RewardEvent(Base):
@@ -54,46 +87,52 @@ class RewardEvent(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=False)
-    btc_amount = Column(Integer, nullable=False)          # satoshis
+    btc_amount = Column(BigInteger, nullable=False)          # satoshis
+    # The BTC price at the moment of earning. Required to value a reward at fair
+    # market value on receipt rather than at today's price.
     btc_price = Column(Float, nullable=False)
     cashback_rate = Column(Float, nullable=False)
-    level_multiplier = Column(Float, default=1.0)
-    boost_multiplier = Column(Float, default=1.0)
+    level_multiplier = Column(Float, default=1.0, nullable=False)
+    boost_multiplier = Column(Float, default=1.0, nullable=False)
     category = Column(String(40), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utcnow, index=True, nullable=False)
 
     user = relationship("User", back_populates="rewards")
     transaction = relationship("Transaction", back_populates="reward")
+
+    __table_args__ = (Index("ix_reward_user_created", "user_id", "created_at"),)
 
 
 class WalletBalance(Base):
     __tablename__ = "wallet_balances"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
-    btc_balance = Column(Float, default=0.0)              # satoshis
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    balance_sats = Column(BigInteger, default=0, nullable=False)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
 
 class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    amount_sats = Column(Integer, nullable=False)
+    amount_sats = Column(BigInteger, nullable=False)
     type = Column(String(30), nullable=False)
-    status = Column(String(20), default="confirmed")
+    status = Column(String(20), default="confirmed", nullable=False)
     tx_hash = Column(String(80))
     destination_address = Column(String(120), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utcnow, index=True, nullable=False)
+
+    __table_args__ = (Index("ix_wallet_tx_user_created", "user_id", "created_at"),)
 
 
 class UserStreak(Base):
     __tablename__ = "user_streaks"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
-    current_streak = Column(Integer, default=0)
-    longest_streak = Column(Integer, default=0)
+    current_streak = Column(Integer, default=0, nullable=False)
+    longest_streak = Column(Integer, default=0, nullable=False)
     last_transaction_date = Column(Date, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
 
 class UserActiveBoost(Base):
@@ -101,8 +140,8 @@ class UserActiveBoost(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     category = Column(String(40), nullable=False)
-    multiplier = Column(Float, default=2.0)
-    activated_at = Column(DateTime, default=datetime.utcnow)
+    multiplier = Column(Float, default=2.0, nullable=False)
+    activated_at = Column(DateTime, default=utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=False)
 
 
@@ -120,7 +159,7 @@ class UserBadge(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     badge_key = Column(String(40), nullable=False)
-    earned_at = Column(DateTime, default=datetime.utcnow)
+    earned_at = Column(DateTime, default=utcnow, nullable=False)
     __table_args__ = (Index("ix_user_badge_unique", "user_id", "badge_key", unique=True),)
 
 
@@ -129,11 +168,11 @@ class SavingsGoal(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     name = Column(String(120), nullable=False)
-    target_sats = Column(Integer, nullable=False)
-    current_sats = Column(Integer, default=0)
-    icon = Column(String(16), default="target")
-    is_completed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    target_sats = Column(BigInteger, nullable=False)
+    current_sats = Column(BigInteger, default=0, nullable=False)
+    icon = Column(String(16), default="target", nullable=False)
+    is_completed = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
 
 
@@ -141,18 +180,18 @@ class UserRoundUpConfig(Base):
     __tablename__ = "roundup_configs"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
-    is_enabled = Column(Boolean, default=False)
-    multiplier = Column(Float, default=1.0)
+    is_enabled = Column(Boolean, default=False, nullable=False)
+    multiplier = Column(Float, default=1.0, nullable=False)
 
 
 class AutoWithdrawConfig(Base):
     __tablename__ = "auto_withdraw_configs"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
-    is_enabled = Column(Boolean, default=False)
-    threshold_sats = Column(Integer, default=100000)
+    is_enabled = Column(Boolean, default=False, nullable=False)
+    threshold_sats = Column(BigInteger, default=100_000, nullable=False)
     destination_address = Column(String(120), nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
 
 class ReferralCode(Base):
@@ -160,18 +199,18 @@ class ReferralCode(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     code = Column(String(16), unique=True, index=True, nullable=False)
-    total_referrals = Column(Integer, default=0)
-    total_sats_earned = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    total_referrals = Column(Integer, default=0, nullable=False)
+    total_sats_earned = Column(BigInteger, default=0, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
 
 class Referral(Base):
     __tablename__ = "referrals"
     id = Column(Integer, primary_key=True)
     referrer_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    referee_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    reward_sats = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    referee_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    reward_sats = Column(BigInteger, default=0, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
 
 class PriceAlert(Base):
@@ -180,9 +219,9 @@ class PriceAlert(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     target_price = Column(Float, nullable=False)
     direction = Column(String(10), nullable=False)
-    is_triggered = Column(Boolean, default=False)
+    is_triggered = Column(Boolean, default=False, nullable=False)
     triggered_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
 
 class Notification(Base):
@@ -191,10 +230,12 @@ class Notification(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     title = Column(String(120), nullable=False)
     message = Column(String(400), nullable=False)
-    type = Column(String(30), default="system")
-    icon = Column(String(40), default="bell")
-    is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    type = Column(String(30), default="system", nullable=False)
+    icon = Column(String(40), default="bell", nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=utcnow, index=True, nullable=False)
+
+    __table_args__ = (Index("ix_notification_user_created", "user_id", "created_at"),)
 
 
 class UserTOTP(Base):
@@ -202,9 +243,9 @@ class UserTOTP(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     secret_key = Column(String(64), nullable=False)
-    backup_codes = Column(Text, default="[]")
-    is_enabled = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    backup_codes = Column(Text, default="[]", nullable=False)
+    is_enabled = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
 
 class TransactionRiskScore(Base):
@@ -212,8 +253,8 @@ class TransactionRiskScore(Base):
     id = Column(Integer, primary_key=True)
     transaction_id = Column(Integer, ForeignKey("transactions.id"), unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    risk_score = Column(Integer, default=0)
-    is_anomaly = Column(Boolean, default=False)
-    features_used = Column(Text, default="{}")
-    model_version = Column(String(40), default="iforest-v1")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    risk_score = Column(Integer, default=0, nullable=False)
+    is_anomaly = Column(Boolean, default=False, nullable=False)
+    features_used = Column(Text, default="{}", nullable=False)
+    model_version = Column(String(40), default="iforest-v1", nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)

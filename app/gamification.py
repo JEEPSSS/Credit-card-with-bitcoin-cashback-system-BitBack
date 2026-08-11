@@ -2,13 +2,19 @@
 
 Badge conditions are declared as predicates over a snapshot of the user's state
 so adding a badge is a one-line change and the checks stay testable.
-"""
-from datetime import date, datetime, timedelta
 
-from sqlalchemy import func
+Every snapshot value is computed in SQL. The previous version answered
+"has any transaction happened between midnight and 5am" by loading the user's
+entire transaction history into Python and scanning it - on the transaction
+path, so the cost grew with history on every single purchase.
+"""
+from datetime import timedelta
+
+from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.orm import Session
 
-from app.models import Transaction, UserBadge, UserStreak, RewardEvent
+from app.clock import start_of_utc_day, utctoday
+from app.models import Transaction, UserBadge, UserStreak
 
 BADGES = [
     {"key": "first_swipe", "name": "First swipe", "icon": "sparkles", "description": "Your first transaction"},
@@ -24,6 +30,8 @@ BADGES = [
 ]
 BADGE_BY_KEY = {b["key"]: b for b in BADGES}
 
+NIGHT_OWL_END_HOUR = 5
+
 
 def update_streak(db: Session, user_id: int) -> UserStreak:
     streak = db.query(UserStreak).filter(UserStreak.user_id == user_id).first()
@@ -32,7 +40,8 @@ def update_streak(db: Session, user_id: int) -> UserStreak:
         db.add(streak)
         db.flush()
 
-    today = date.today()
+    # UTC, to agree with the UTC timestamps on the transactions being counted.
+    today = utctoday()
     last = streak.last_transaction_date
     if last == today:
         pass
@@ -45,24 +54,42 @@ def update_streak(db: Session, user_id: int) -> UserStreak:
     return streak
 
 
-def check_badges(db: Session, user_id: int, total_sats: int, level_key: str) -> list[dict]:
-    owned = {b.badge_key for b in db.query(UserBadge).filter(UserBadge.user_id == user_id).all()}
+def _has_night_transaction(db: Session, user_id: int) -> bool:
+    """EXISTS query for a transaction in the first five hours of any UTC day.
 
-    tx_count = db.query(func.count(Transaction.id)).filter(Transaction.user_id == user_id).scalar() or 0
-    distinct_cats = db.query(func.count(func.distinct(Transaction.category))).filter(
-        Transaction.user_id == user_id).scalar() or 0
-    max_in_cat = db.query(func.count(Transaction.id)).filter(
-        Transaction.user_id == user_id).group_by(Transaction.category).order_by(
-        func.count(Transaction.id).desc()).limit(1).scalar() or 0
+    Hour extraction is dialect-specific: SQLite has no EXTRACT, so strftime is
+    used there and EXTRACT everywhere else.
+    """
+    if db.bind.dialect.name == "sqlite":
+        hour = cast(func.strftime("%H", Transaction.created_at), Integer)
+    else:
+        hour = func.extract("hour", Transaction.created_at)
+    return db.query(
+        select(1)
+        .where(Transaction.user_id == user_id, hour < NIGHT_OWL_END_HOUR)
+        .exists()
+    ).scalar() or False
+
+
+def check_badges(db: Session, user_id: int, total_sats: int, level_key: str) -> list[dict]:
+    owned = {b.badge_key for b in db.query(UserBadge.badge_key).filter(UserBadge.user_id == user_id)}
+
+    mine = Transaction.user_id == user_id
+    tx_count = db.query(func.count(Transaction.id)).filter(mine).scalar() or 0
+    distinct_cats = db.query(func.count(func.distinct(Transaction.category))).filter(mine).scalar() or 0
+    max_in_cat = (
+        db.query(func.count(Transaction.id))
+        .filter(mine)
+        .group_by(Transaction.category)
+        .order_by(func.count(Transaction.id).desc())
+        .limit(1)
+        .scalar()
+    ) or 0
+    today_count = db.query(func.count(Transaction.id)).filter(
+        mine, Transaction.created_at >= start_of_utc_day()).scalar() or 0
+
     streak = db.query(UserStreak).filter(UserStreak.user_id == user_id).first()
     current_streak = streak.current_streak if streak else 0
-
-    start_today = datetime.combine(date.today(), datetime.min.time())
-    today_count = db.query(func.count(Transaction.id)).filter(
-        Transaction.user_id == user_id, Transaction.created_at >= start_today).scalar() or 0
-
-    night = db.query(Transaction).filter(Transaction.user_id == user_id).all()
-    has_night = any(0 <= t.created_at.hour < 5 for t in night)
 
     conditions = {
         "first_swipe": tx_count >= 1,
@@ -73,7 +100,7 @@ def check_badges(db: Session, user_id: int, total_sats: int, level_key: str) -> 
         "category_explorer": distinct_cats >= 5,
         "precision_spender": max_in_cat >= 10,
         "lightning_fast": today_count >= 3,
-        "night_owl": has_night,
+        "night_owl": _has_night_transaction(db, user_id),
         "diamond_hands": level_key == "diamond",
     }
 
@@ -86,9 +113,10 @@ def check_badges(db: Session, user_id: int, total_sats: int, level_key: str) -> 
 
 
 def badge_state(db: Session, user_id: int) -> dict:
-    owned = {b.badge_key: b.earned_at for b in db.query(UserBadge).filter(UserBadge.user_id == user_id).all()}
+    owned = {b.badge_key: b.earned_at
+             for b in db.query(UserBadge).filter(UserBadge.user_id == user_id)}
     return {
-        "earned": [{**BADGE_BY_KEY[k], "earned_at": v} for k, v in owned.items()],
+        "earned": [{**BADGE_BY_KEY[k], "earned_at": v} for k, v in owned.items() if k in BADGE_BY_KEY],
         "all": [{**b, "earned": b["key"] in owned} for b in BADGES],
         "earned_count": len(owned),
         "total_count": len(BADGES),

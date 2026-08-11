@@ -1,16 +1,16 @@
-import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-load_dotenv()
+from app.config import settings
 
-# Postgres in production, SQLite fallback so the project runs with zero setup.
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bitback.db")
+connect_args = {"check_same_thread": False} if settings.is_sqlite else {}
+engine = create_engine(settings.database_url, connect_args=connect_args, pool_pre_ping=True)
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# autoflush stays on. With it off, a query issued between `session.add(obj)` and
+# `session.commit()` does not see the pending object, so code that adds a row and
+# then looks it up gets None and inserts a duplicate. That produced a hard
+# IntegrityError on the referral signup path.
+SessionLocal = sessionmaker(autocommit=False, autoflush=True, bind=engine)
 Base = declarative_base()
 
 

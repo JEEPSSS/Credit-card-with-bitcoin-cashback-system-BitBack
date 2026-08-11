@@ -17,10 +17,10 @@ horizon, which is the standard remedy (Gardner & McKenzie) and bounds the
 forecast at level + trend * phi/(1-phi).
 """
 from collections import defaultdict
-from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.clock import days_ago
 from app.models import RewardEvent
 
 ALPHA = 0.3    # level smoothing
@@ -28,10 +28,11 @@ BETA = 0.1     # trend smoothing
 PHI = 0.85     # trend damping
 LOOKBACK_DAYS = 91          # 13 whole weeks
 HORIZON_DAYS = 30
+TREND_TOLERANCE = 0.05      # weekly slope, as a share of the weekly mean
 
 
 def _weekly_series(db: Session, user_id: int) -> tuple[list[float], int]:
-    since = datetime.utcnow() - timedelta(days=LOOKBACK_DAYS)
+    since = days_ago(LOOKBACK_DAYS)
     rows = (
         db.query(RewardEvent)
         .filter(RewardEvent.user_id == user_id, RewardEvent.created_at >= since)
@@ -44,7 +45,19 @@ def _weekly_series(db: Session, user_id: int) -> tuple[list[float], int]:
         if 0 <= idx < LOOKBACK_DAYS // 7:
             weeks[idx] += r.btc_amount
             active_days.add(r.created_at.date())
-    return [weeks.get(i, 0.0) for i in range(LOOKBACK_DAYS // 7)], len(active_days)
+    series = [weeks.get(i, 0.0) for i in range(LOOKBACK_DAYS // 7)]
+
+    # Weeks before the user's first reward are not weeks in which they earned
+    # nothing, they are weeks in which the account did not exist. Leaving them in
+    # makes every new account look like explosive growth: a flat 10,000 sats a
+    # week over the three weeks a user has actually been active fits a slope of
+    # +824/week once ten empty leading weeks are prepended, and the app tells
+    # them their earnings are increasing when they are flat.
+    #
+    # Interior zeros are kept. A quiet week inside an active history is real
+    # signal about that user; a week before they signed up is not.
+    first_active = next((i for i, v in enumerate(series) if v > 0), len(series))
+    return series[first_active:], len(active_days)
 
 
 def _linear_regression(y: list[float]) -> dict:
@@ -54,10 +67,10 @@ def _linear_regression(y: list[float]) -> dict:
     xs = list(range(n))
     mx, my = sum(xs) / n, sum(y) / n
     denom = sum((x - mx) ** 2 for x in xs)
-    slope = sum((x - mx) * (v - my) for x, v in zip(xs, y)) / denom if denom else 0.0
+    slope = sum((x - mx) * (v - my) for x, v in zip(xs, y, strict=False)) / denom if denom else 0.0
     intercept = my - slope * mx
     ss_tot = sum((v - my) ** 2 for v in y)
-    ss_res = sum((v - (slope * x + intercept)) ** 2 for x, v in zip(xs, y))
+    ss_res = sum((v - (slope * x + intercept)) ** 2 for x, v in zip(xs, y, strict=False))
     r2 = 1 - ss_res / ss_tot if ss_tot > 1e-9 else 0.0
     return {"slope": slope, "intercept": intercept, "r2": max(0.0, min(1.0, r2))}
 
@@ -122,9 +135,16 @@ def forecast_earnings(db: Session, user_id: int) -> dict:
     confidence = round(0.5 + 0.5 * lin["r2"], 3)
     band = 0.20 - 0.10 * lin["r2"]
 
+    # The direction label describes the observed series, so it is read from the
+    # least-squares slope rather than from Holt's trend state. Damping shrinks
+    # that state on purpose: for a constant weekly slope s it settles at
+    # beta*s / (1 - (1-beta)*phi), which at beta=0.1 and phi=0.85 is only 43% of
+    # s. Comparing a deliberately shrunk quantity against a fraction of the mean
+    # labelled a sustained 2,000 sats/week decline as "stable".
     weekly_mean = sum(y) / max(1, non_empty)
-    direction = ("increasing" if fit["trend"] > weekly_mean * 0.05
-                 else "decreasing" if fit["trend"] < -weekly_mean * 0.05 else "stable")
+    tolerance = weekly_mean * TREND_TOLERANCE
+    direction = ("increasing" if lin["slope"] > tolerance
+                 else "decreasing" if lin["slope"] < -tolerance else "stable")
 
     return {
         "has_enough_data": True,

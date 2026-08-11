@@ -1,0 +1,35 @@
+[project]
+name = "bitback"
+version = "1.1.0"
+description = "Bitcoin cashback card simulation - FastAPI backend"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes: undefined names, unused imports
+    "I",    # isort: import ordering
+    "B",    # bugbear: likely bugs
+    "UP",   # pyupgrade: outdated idioms
+    "C4",   # comprehension simplifications
+]
+ignore = [
+    "B008",  # FastAPI's Depends()/Query() defaults are function calls by design
+    "E501",  # line length is enforced by the formatter, not the linter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+    "error::DeprecationWarning:app.*",
+    "error::DeprecationWarning:main",
+]

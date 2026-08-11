@@ -7,11 +7,11 @@ there is no cross-user signal that beats a cardholder's own history here.
 """
 import math
 from collections import defaultdict
-from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.models import Transaction, CategoryCashback
+from app.clock import days_ago, utcnow
+from app.models import CategoryCashback, Transaction
 
 WEIGHTS = {"spend_volume": 0.30, "frequency": 0.25, "base_rate": 0.15, "trend": 0.15, "recency": 0.15}
 LOOKBACK_DAYS = 60
@@ -32,7 +32,7 @@ def _slope(pairs: list[tuple[float, float]]) -> float:
 
 
 def recommend_boost(db: Session, user_id: int) -> dict:
-    since = datetime.utcnow() - timedelta(days=LOOKBACK_DAYS)
+    since = days_ago(LOOKBACK_DAYS)
     txs = (
         db.query(Transaction)
         .filter(Transaction.user_id == user_id, Transaction.created_at >= since)
@@ -49,7 +49,7 @@ def recommend_boost(db: Session, user_id: int) -> dict:
         }
 
     volume, count, days = defaultdict(float), defaultdict(int), defaultdict(list)
-    now = datetime.utcnow()
+    now = utcnow()
     for t in txs:
         volume[t.category] += t.amount_fiat
         count[t.category] += 1

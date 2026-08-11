@@ -42,7 +42,7 @@ PERSONAS = [
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na > 1e-9 and nb > 1e-9 else 0.0
@@ -73,7 +73,7 @@ def classify_persona(db: Session, user_id: int) -> dict:
     confidence = round(min(0.99, best["similarity"] * (0.75 + min(0.25, gap * 2.5))), 3)
 
     top = sorted(
-        ({"category": c, "share": round(v, 4)} for c, v in zip(CATEGORIES, vector) if v > 0),
+        ({"category": c, "share": round(v, 4)} for c, v in zip(CATEGORIES, vector, strict=False) if v > 0),
         key=lambda x: x["share"], reverse=True,
     )[:3]
 
@@ -86,6 +86,6 @@ def classify_persona(db: Session, user_id: int) -> dict:
         "similarity": round(best["similarity"], 3),
         "runner_up": runner["persona"]["name"],
         "top_categories": top,
-        "spending_vector": {c: round(v, 4) for c, v in zip(CATEGORIES, vector)},
+        "spending_vector": {c: round(v, 4) for c, v in zip(CATEGORIES, vector, strict=False)},
         "all_scores": [{"name": s["persona"]["name"], "similarity": round(s["similarity"], 3)} for s in scored],
     }
