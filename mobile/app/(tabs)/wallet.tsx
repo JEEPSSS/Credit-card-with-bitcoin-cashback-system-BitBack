@@ -6,6 +6,7 @@ import { miscAPI, walletAPI } from "@/lib/api";
 import { relativeTime, sats, titleCase, usd } from "@/lib/format";
 import { COLORS, MIN_CONTROL_HEIGHT, font, fontSize, radius, space } from "@/lib/theme";
 import { useApi } from "@/lib/useApi";
+import { ChartSkeleton } from "@/components/Skeleton";
 import { Odometer } from "@/components/Odometer";
 import { Async, Card, Divider, Header, Label, Num, Screen } from "@/components/ui";
 
@@ -36,7 +37,7 @@ export default function WalletScreen() {
     <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
       <Header title="Wallet" />
 
-      <Async state={state}>
+      <Async state={state} skeleton={<ChartSkeleton />}>
         {({ balance, growth, ledger }) => {
           const points = growth.points.map((p, i) => ({ x: i, y: p.sats }));
           return (

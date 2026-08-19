@@ -11,7 +11,7 @@ const FEATURE_LABELS: Record<string, string> = {
   amount_zscore: "Amount vs your average for this category",
   category_frequency: "How often you use this category",
   time_since_last_tx: "Gap since your last transaction",
-  hour_of_day: "Time of day",
+  hour_rarity: "How unusual this time of day is for you",
   amount_vs_global_avg: "Amount vs your overall average",
   merchant_is_new: "First time at this merchant",
 };

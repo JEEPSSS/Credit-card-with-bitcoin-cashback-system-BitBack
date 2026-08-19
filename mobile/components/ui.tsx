@@ -172,18 +172,24 @@ export function ErrorNote({ message, onRetry }: { message: string; onRetry?: () 
  * Renders one of three states for a screen's data: still loading, failed with a
  * retry, or ready. Screens used to hold `if (!data) return <Loading />`, which
  * meant a failed request rendered a spinner forever.
+ *
+ * Pass a `skeleton` shaped like the content it stands in for. A spinner says
+ * only that something is happening; a skeleton says what is arriving and where,
+ * so nothing shifts when it lands. `Loading` remains the fallback for screens
+ * whose shape is not worth describing.
  */
 export function Async<T>({
-  state, children, empty,
+  state, children, empty, skeleton,
 }: {
   state: AsyncState<T>;
   children: (data: T) => ReactNode;
   empty?: ReactNode;
+  skeleton?: ReactNode;
 }) {
   if (state.error && state.data === null) {
     return <ErrorNote message={state.error} onRetry={state.reload} />;
   }
-  if (state.loading && state.data === null) return <Loading />;
+  if (state.loading && state.data === null) return <>{skeleton ?? <Loading />}</>;
   if (state.data === null) return <>{empty ?? null}</>;
   return <>{children(state.data)}</>;
 }

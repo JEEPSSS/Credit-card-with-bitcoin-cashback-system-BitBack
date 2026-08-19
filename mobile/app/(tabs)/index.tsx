@@ -10,7 +10,9 @@ import { COLORS, font, fontSize, iconSize, radius, space } from "@/lib/theme";
 import type { Transaction } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { Odometer } from "@/components/Odometer";
+import { PaymentCard } from "@/components/PaymentCard";
 import { ReceiptRow } from "@/components/ReceiptRow";
+import { HomeSkeleton } from "@/components/Skeleton";
 import { Async, Button, Card, Divider, Label, Num, Screen } from "@/components/ui";
 
 const RECENT_COUNT = 4;
@@ -49,14 +51,27 @@ export default function Home() {
         <NotificationBell unread={state.data?.unread ?? 0} />
       </View>
 
-      <Async state={state}>
+      <Async state={state} skeleton={<HomeSkeleton />}>
         {({ wallet, price, summary, txs, forecast }) => {
           const up = price.change_24h >= 0;
           return (
             <>
+              {/* The card first, then the balance. The product is a card, and
+                  the finish is keyed to the tier the user has actually reached,
+                  so levelling up is something you can see rather than read. */}
+              <PaymentCard
+                levelKey={summary.level.key}
+                levelName={summary.level.name}
+                multiplier={summary.level.multiplier}
+                holder={user?.display_name ?? "Cardholder"}
+                seed={user?.id ?? 1}
+              />
+
               {/* The balance is the thesis of the screen: one bold element,
                   everything else quiet. */}
-              <Label>Your balance</Label>
+              <View style={{ marginTop: space.xl }}>
+                <Label>Your balance</Label>
+              </View>
               <View style={{ marginTop: space.sm + 2 }}>
                 <Odometer value={wallet.balance_sats} fontSize={fontSize.display} suffix="sats" />
               </View>
