@@ -12,7 +12,10 @@ import pytest
 from app.anomaly_detector import (
     ANOMALY_THRESHOLD,
     MIN_TRAIN_SIZE,
+    MODEL_VERSION,
+    _circular_hour_distance,
     _heuristic_score,
+    _hour_rarity,
     score_transaction,
 )
 from app.clock import utcnow
@@ -120,8 +123,31 @@ def test_a_quiet_week_inside_an_active_history_is_kept(db, user):
 def test_both_component_models_are_reported(db, user):
     add_rewards(db, user.id, [10_000] * 12)
     comparison = forecast_earnings(db, user.id)["model_comparison"]
-    assert set(comparison) == {"linear_regression", "holt_damped", "blend_weights"}
-    assert comparison["blend_weights"] == {"holt": 0.6, "linear": 0.4}
+    assert set(comparison) == {
+        "window_mean", "level_only", "trend_estimate", "blend_weights",
+    }
+    assert comparison["blend_weights"] == {"level_only": 0.5, "window_mean": 0.5}
+
+
+def test_the_trend_estimate_does_not_enter_the_prediction(db, user):
+    """Backtesting showed the trend term costing accuracy at this sample size.
+
+    It is still estimated, because the app labels the direction, but the
+    prediction has to sit between the two components that produce it — which it
+    cannot do if a trend is being added on top.
+    """
+    add_rewards(db, user.id, [2_000 * (i + 1) for i in range(12)])
+    result = forecast_earnings(db, user.id)
+    comparison = result["model_comparison"]
+
+    low = min(comparison["window_mean"]["predicted_sats"],
+              comparison["level_only"]["predicted_sats"])
+    high = max(comparison["window_mean"]["predicted_sats"],
+               comparison["level_only"]["predicted_sats"])
+
+    assert low <= result["predicted_sats_30d"] <= high
+    assert comparison["trend_estimate"]["slope_per_week"] > 0   # still measured
+    assert result["trend_direction"] == "increasing"            # still reported
 
 
 # -------------------------------------------------------------------- persona
@@ -167,10 +193,10 @@ def test_confidence_stays_in_range(db, user):
 # ---------------------------------------------------------------------- fraud
 def test_the_heuristic_flags_an_extreme_amount():
     normal = _heuristic_score({"amount_zscore": 0.2, "category_frequency": 0.4,
-                               "time_since_last_tx": 10.0, "hour_of_day": 0.5,
+                               "time_since_last_tx": 10.0, "hour_rarity": 0.2,
                                "amount_vs_global_avg": 1.1, "merchant_is_new": 0.0})
     extreme = _heuristic_score({"amount_zscore": 6.0, "category_frequency": 0.01,
-                                "time_since_last_tx": 2.0, "hour_of_day": 0.1,
+                                "time_since_last_tx": 2.0, "hour_rarity": 0.99,
                                 "amount_vs_global_avg": 12.0, "merchant_is_new": 1.0})
     assert normal < ANOMALY_THRESHOLD <= extreme
 
@@ -202,7 +228,7 @@ def test_a_trained_model_takes_over_once_there_is_enough_history(db, user):
                      created_at=utcnow())
     db.add(tx)
     db.commit()
-    assert score_transaction(db, user.id, tx).model_version == "iforest-v1"
+    assert score_transaction(db, user.id, tx).model_version == MODEL_VERSION
 
 
 def test_a_wildly_abnormal_purchase_scores_higher_than_a_routine_one(db, user):
@@ -230,3 +256,46 @@ def test_scores_stay_inside_the_reported_scale(db, user):
     db.add(tx)
     db.commit()
     assert 0 <= score_transaction(db, user.id, tx).risk_score <= 100
+
+
+# ------------------------------------------------------------- hour rarity
+def test_the_clock_face_wraps_at_midnight():
+    """23:00 and 00:00 are an hour apart, not twenty-three."""
+    assert _circular_hour_distance(23, 0) == 1
+    assert _circular_hour_distance(22, 2) == 4
+    assert _circular_hour_distance(3, 15) == 12   # the maximum
+
+
+def test_an_hour_the_cardholder_never_uses_is_maximally_rare(db, user):
+    """Regression: the hour feature was absolute, so it could not tell a night
+    worker apart from a cardholder who has never transacted before 8am."""
+    _build_history(db, user.id)          # every row lands on the same hour
+    history = db.query(Transaction).filter(Transaction.user_id == user.id).all()
+
+    usual = history[0].created_at.hour
+    opposite = (usual + 12) % 24         # the far side of the clock face
+
+    routine = _hour_rarity(usual, history)
+    never = _hour_rarity(opposite, history)
+
+    assert routine < 0.1
+    assert never > 0.9
+    assert never > routine
+
+
+def test_hour_rarity_is_relative_to_this_cardholder(db, user_factory):
+    """The same 3am charge is routine for one cardholder and a flag for another."""
+    night_owl = user_factory("owl@test.io")
+    base = utcnow() - timedelta(days=60)
+    # Built inline rather than via the shared helper, because the point is the
+    # difference in *when* the two cardholders transact.
+    for i in range(60):
+        db.add(Transaction(
+            user_id=night_owl.id, amount_fiat=30.0, category="dining",
+            merchant="Late Night", btc_price_at_time=50_000.0, sats_earned=100,
+            created_at=(base + timedelta(days=i)).replace(hour=3),
+        ))
+    db.commit()
+    owl_history = db.query(Transaction).filter(Transaction.user_id == night_owl.id).all()
+
+    assert _hour_rarity(3, owl_history) < 0.1

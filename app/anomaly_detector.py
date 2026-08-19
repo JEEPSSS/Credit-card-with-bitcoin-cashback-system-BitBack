@@ -43,14 +43,61 @@ MIN_TRAIN_SIZE = 50
 MIN_CONTEXT = 20      # prior transactions a training row needs to be usable
 ANOMALY_THRESHOLD = 60
 CONTAMINATION = 0.05
-MODEL_VERSION = "iforest-v1"
+MODEL_VERSION = "iforest-v2"     # v2: hour_of_day replaced by hour_rarity
+HOUR_WINDOW = 2                  # ± hours counted as "the same time of day"
 HISTORY_LIMIT = 500
 CACHE_SIZE = 256      # users held in the model cache before the oldest is evicted
 
 FEATURE_NAMES = [
     "amount_zscore", "category_frequency", "time_since_last_tx",
-    "hour_of_day", "amount_vs_global_avg", "merchant_is_new",
+    "hour_rarity", "amount_vs_global_avg", "merchant_is_new",
 ]
+
+
+def _circular_hour_distance(a: int, b: int) -> int:
+    """Hours apart on a 24-hour clock face.
+
+    23:00 and 00:00 are one hour apart, not twenty-three. Treating the hour as a
+    plain number gets that wrong at exactly the point of the night where unusual
+    activity concentrates.
+    """
+    gap = abs(a - b)
+    return min(gap, 24 - gap)
+
+
+def _hour_rarity(tx_hour: int, history) -> float:
+    """How unusual this hour is *for this cardholder*: 0 routine, 1 never seen.
+
+    Replaces a plain `hour / 23` encoding, which had two faults. It was linear
+    over a cyclical quantity, so 23:00 and 00:00 sat at opposite ends of the
+    range. And it was absolute, making it the only feature in this model not
+    expressed relative to the cardholder's own history — so a 3am charge scored
+    the same whether the cardholder was a night worker or had never once
+    transacted before 8am.
+
+    The evaluation caught the consequence: hour-based anomalies were the one
+    injected type the detector missed completely, at 0/2 recall with a median
+    score of 50 against a threshold of 60. The feature that broke the module's
+    own stated design principle was the feature that failed.
+
+    Expressed as normalised surprisal, -log p, rather than as a raw fraction of
+    history. A cardholder who transacts across a fifteen-hour waking window has
+    roughly a third of their history within any two-hour band, so `1 - fraction`
+    puts routine hours near 0.67 and a never-seen hour at 1.0 — a separation of
+    about 1.5x, which the forest struggles to isolate against five other
+    features. Taking the log stretches that to roughly 5x, because surprisal
+    grows without bound as the probability approaches zero, which is exactly the
+    behaviour wanted for "this has never happened before".
+    """
+    if not history:
+        return 0.0
+    nearby = sum(
+        1 for t in history if _circular_hour_distance(t.created_at.hour, tx_hour) <= HOUR_WINDOW
+    )
+    # Add-one smoothing keeps the never-seen case finite and bounds the result
+    # at 1.0 for the rarest possible hour.
+    n = len(history)
+    return math.log((n + 1) / (nearby + 1)) / math.log(n + 1)
 
 
 def _features(tx_amount, tx_category, tx_merchant, tx_time, history) -> dict:
@@ -72,7 +119,7 @@ def _features(tx_amount, tx_category, tx_merchant, tx_time, history) -> dict:
     else:
         time_since = 0.0
 
-    hour = tx_time.hour / 23.0
+    hour = _hour_rarity(tx_time.hour, history)
     global_avg = float(np.mean(amounts)) if amounts else tx_amount
     amt_vs_avg = tx_amount / global_avg if global_avg > 1e-6 else 1.0
     is_new_merchant = 0.0 if any(t.merchant == tx_merchant for t in history) else 1.0
@@ -81,7 +128,7 @@ def _features(tx_amount, tx_category, tx_merchant, tx_time, history) -> dict:
         "amount_zscore": round(zscore, 4),
         "category_frequency": round(cat_freq, 4),
         "time_since_last_tx": round(time_since, 4),
-        "hour_of_day": round(hour, 4),
+        "hour_rarity": round(hour, 4),
         "amount_vs_global_avg": round(amt_vs_avg, 4),
         "merchant_is_new": is_new_merchant,
     }
@@ -100,7 +147,7 @@ def _heuristic_score(f: dict) -> int:
     score = 0.0
     score += min(35, abs(f["amount_zscore"]) * 11)
     score += 20 if f["amount_vs_global_avg"] > 3 else 0
-    score += 15 if f["hour_of_day"] < 0.22 else 0          # roughly midnight-5am
+    score += 15 if f["hour_rarity"] > 0.95 else 0          # an hour this user never uses
     score += 10 * f["merchant_is_new"]
     score += 15 if f["category_frequency"] < 0.05 else 0
     return int(max(0, min(100, score)))

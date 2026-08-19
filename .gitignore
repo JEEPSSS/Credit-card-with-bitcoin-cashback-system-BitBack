@@ -12,3 +12,5 @@ dist/
 # expo
 mobile/.expo/
 mobile/dist/
+
+evaluation_results.json
