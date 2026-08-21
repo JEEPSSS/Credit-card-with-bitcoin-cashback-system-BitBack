@@ -258,3 +258,33 @@ class TransactionRiskScore(Base):
     features_used = Column(Text, default="{}", nullable=False)
     model_version = Column(String(40), default="iforest-v1", nullable=False)
     created_at = Column(DateTime, default=utcnow, nullable=False)
+
+
+class SurveyResponse(Base):
+    """The Chapter 3.6 usability-validation instrument.
+
+    Deliberately not tied to `User`: a respondent never has to hold a BitBack
+    account to take the survey, so there is no `user_id` here. `source`
+    records which of the two delivery channels a response came in through
+    (the in-app screen, or the standalone web page) so the two can be
+    analysed together or split apart. A respondent who screens out as an
+    active trader (Chapter 3.1's segment definition excludes them) still gets
+    a row, with `screened_out=True` and every question left null, so the
+    funnel itself is measurable rather than silently discarded.
+    """
+    __tablename__ = "survey_responses"
+
+    id = Column(Integer, primary_key=True)
+    source = Column(String(10), nullable=False)  # "app" | "web"
+    screened_out = Column(Boolean, default=False, nullable=False)
+    q1 = Column(Integer, nullable=True)
+    q2 = Column(Integer, nullable=True)
+    q3 = Column(Integer, nullable=True)
+    q4 = Column(Integer, nullable=True)
+    q5 = Column(Integer, nullable=True)
+    q6 = Column(Integer, nullable=True)
+    q7 = Column(Integer, nullable=True)
+    q8 = Column(String(20), nullable=True)
+    q9 = Column(Text, nullable=True)
+    q10 = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utcnow, index=True, nullable=False)

@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BitBack Product Research</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  /* Tokens copied 1:1 from mobile/lib/theme.ts so this page and the app read
+     as one product rather than a bolted-on form. See that file for the
+     rationale behind each value. */
+  :root{
+    --canvas:#0A0A0A; --sunken:#0F0E0E; --surface:#151414; --raised:#1B1A19;
+    --elevated:#222120; --hairline:#272524; --border:#322F2D; --subtle:#4D4946;
+    --muted:#97918B; --bright:#C9C3BC; --text:#F2F0EC;
+    --primary:#F7931A; --primary-pressed:#D97C0E; --accent-soft:#2A1D08; --accent-edge:#4A3410;
+    --on-primary:#1A1206;
+    --success:#35A56A; --success-soft:#0F2419; --danger:#E05252; --danger-soft:#2A1313;
+    --radius-control:8px; --radius-card:12px; --radius-pill:999px;
+    --space-xs:4px; --space-sm:8px; --space-md:12px; --space-lg:16px; --space-xl:24px; --space-2xl:32px;
+    --fs-caption:13px; --fs-body:16px; --fs-heading:20px; --fs-title:25px; --fs-display:34px;
+    --min-touch:48px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--canvas);color:var(--text);}
+  body{
+    font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+    min-height:100vh; min-height:100dvh; display:flex; align-items:center; justify-content:center;
+    padding:var(--space-lg);
+  }
+  .shell{width:100%; max-width:440px; margin:0 auto;}
+  .wordmark{display:flex; align-items:center; gap:var(--space-sm); margin-bottom:var(--space-xl); justify-content:center;}
+  .wordmark .dot{width:10px; height:10px; border-radius:50%; background:var(--primary);}
+  .wordmark span{font-weight:600; letter-spacing:0.5px; font-size:var(--fs-caption); color:var(--muted); text-transform:uppercase;}
+
+  .progress{display:flex; gap:6px; margin-bottom:var(--space-xl); padding:0 var(--space-xs);}
+  .progress i{flex:1; height:4px; border-radius:var(--radius-pill); background:var(--hairline); transition:background .2s;}
+  .progress i.done{background:var(--primary);}
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card);
+    padding:var(--space-xl); min-height:340px; display:flex; flex-direction:column;
+  }
+  .step{display:none; flex-direction:column; flex:1; animation:fade .25s ease;}
+  .step.active{display:flex;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .eyebrow{font-size:var(--fs-caption); color:var(--primary); font-weight:600; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:var(--space-sm);}
+  h1{font-size:var(--fs-title); line-height:1.25; margin:0 0 var(--space-sm); font-weight:600;}
+  .q{font-size:var(--fs-heading); line-height:1.35; font-weight:600; margin:0 0 var(--space-lg);}
+  p.sub{color:var(--muted); font-size:var(--fs-body); line-height:1.5; margin:0 0 var(--space-lg);}
+
+  .likert{display:flex; flex-direction:column; gap:var(--space-md); flex:1;}
+  .likert-row{display:flex; gap:var(--space-sm); justify-content:space-between;}
+  .likert-btn{
+    flex:1; aspect-ratio:1; min-height:var(--min-touch); border-radius:var(--radius-control);
+    border:1px solid var(--border); background:var(--raised); color:var(--text);
+    font-family:'JetBrains Mono',monospace; font-size:var(--fs-heading); font-weight:500;
+    cursor:pointer; transition:all .12s;
+  }
+  .likert-btn:hover{border-color:var(--primary);}
+  .likert-btn.selected{background:var(--primary); border-color:var(--primary); color:var(--on-primary);}
+  .likert-labels{display:flex; justify-content:space-between; font-size:var(--fs-caption); color:var(--muted);}
+
+  .choice-list{display:flex; flex-direction:column; gap:var(--space-sm); flex:1;}
+  .choice{
+    min-height:var(--min-touch); border-radius:var(--radius-control); border:1px solid var(--border);
+    background:var(--raised); color:var(--text); font-family:'Inter'; font-size:var(--fs-body);
+    text-align:left; padding:0 var(--space-lg); cursor:pointer;
+  }
+  .choice:hover{border-color:var(--primary);}
+  .choice.selected{background:var(--accent-soft); border-color:var(--primary); color:var(--primary);}
+
+  textarea{
+    width:100%; flex:1; min-height:120px; background:var(--sunken); border:1px solid var(--border);
+    border-radius:var(--radius-control); color:var(--text); font-family:'Inter'; font-size:var(--fs-body);
+    padding:var(--space-md); resize:vertical;
+  }
+  textarea:focus, .likert-btn:focus-visible, .choice:focus-visible, .btn:focus-visible{
+    outline:2px solid var(--primary); outline-offset:2px;
+  }
+  textarea::placeholder{color:var(--subtle);}
+
+  .spacer{flex:1;}
+  .btn{
+    min-height:var(--min-touch); border-radius:var(--radius-control); border:0; font-family:'Inter';
+    font-size:var(--fs-body); font-weight:600; cursor:pointer; margin-top:var(--space-lg);
+  }
+  .btn-primary{background:var(--primary); color:var(--on-primary);}
+  .btn-primary:disabled{opacity:.4; cursor:not-allowed;}
+  .btn-ghost{background:transparent; color:var(--muted); border:1px solid var(--border);}
+  .btn-row{display:flex; gap:var(--space-sm);}
+  .btn-row .btn{flex:1;}
+
+  .badge{
+    width:88px; height:88px; border-radius:50%; margin:0 auto var(--space-lg);
+    background:conic-gradient(var(--primary) 0deg 360deg);
+    display:flex; align-items:center; justify-content:center; position:relative;
+  }
+  .badge::before{content:""; position:absolute; inset:6px; border-radius:50%; background:var(--surface);}
+  .badge span{position:relative; font-family:'JetBrains Mono'; font-weight:500; font-size:22px; color:var(--primary);}
+  .center{text-align:center;}
+
+  .error-note{
+    background:var(--danger-soft); border:1px solid var(--danger); color:var(--text);
+    border-radius:var(--radius-control); padding:var(--space-md); font-size:var(--fs-caption);
+    margin-top:var(--space-md);
+  }
+  .footnote{color:var(--subtle); font-size:var(--fs-caption); text-align:center; margin-top:var(--space-lg); line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="wordmark"><div class="dot"></div><span>BitBack Product Research</span></div>
+  <div class="progress" id="progress"></div>
+  <div class="card" id="card"><!-- steps injected by JS --></div>
+  <p class="footnote">Anonymous. No account or personal data required. Takes about two minutes.</p>
+</div>
+
+<script>
+/**
+ * A single respondent's flow, one question per screen. Matches the
+ * instrument in the FYP report's Chapter 3.6 exactly, so results from this
+ * page and the in-app screen are directly comparable.
+ *
+ * This page is served by the FastAPI backend itself (mounted at /survey), so
+ * fetch('/api/survey/responses') is same-origin: no API base to configure,
+ * and it works the moment the backend is deployed and this URL is shared.
+ */
+const LIKERT_QUESTIONS = [
+  { key: "q1", text: "I am at least somewhat interested in owning or holding Bitcoin." },
+  { key: "q2", text: "I would not currently feel confident opening a cryptocurrency exchange account and buying Bitcoin myself." },
+  { key: "q3", text: "Earning Bitcoin automatically as cashback, without having to buy it myself, is appealing to me." },
+  { key: "q4", text: "I understood what my Bitcoin balance was worth in Singapore dollars at every point in the walkthrough." },
+  { key: "q5", text: "The category-based reward rates and boosts made me want to spend more in specific categories to earn more." },
+  { key: "q6", text: "Seeing a forecast of next month's earnings would make me check the app more often." },
+  { key: "q7", text: "Being shown exactly which transactions were flagged as risky, and why, made me trust the app more than a plain “your card is protected” message would have." },
+];
+const Q8_OPTIONS = [
+  { value: "much_less", label: "Much less appealing" },
+  { value: "less", label: "Less appealing" },
+  { value: "equally", label: "Equally appealing" },
+  { value: "more", label: "More appealing" },
+  { value: "much_more", label: "Much more appealing" },
+];
+
+const state = {
+  screen_active_trader: null,
+  q1: null, q2: null, q3: null, q4: null, q5: null, q6: null, q7: null,
+  q8: null, q9: "", q10: "",
+};
+
+// step order: intro -> screen -> 7 likert -> q8 -> q9 -> q10 -> submitting -> done
+const STEPS = ["intro", "screen", ...LIKERT_QUESTIONS.map(q => q.key), "q8", "q9", "q10", "done"];
+let stepIndex = 0;
+
+const card = document.getElementById("card");
+const progressEl = document.getElementById("progress");
+
+function renderProgress() {
+  // Progress excludes intro/done from the visible count so it reads 1..9.
+  const total = STEPS.length - 2;
+  const current = Math.max(0, Math.min(total, stepIndex - 1));
+  progressEl.innerHTML = "";
+  if (stepIndex === 0 || STEPS[stepIndex] === "done") { progressEl.style.visibility = "hidden"; return; }
+  progressEl.style.visibility = "visible";
+  for (let i = 0; i < total; i++) {
+    const bar = document.createElement("i");
+    if (i < current) bar.className = "done";
+    progressEl.appendChild(bar);
+  }
+}
+
+function goTo(index) {
+  stepIndex = index;
+  renderProgress();
+  render();
+}
+function next() { goTo(stepIndex + 1); }
+
+function render() {
+  const step = STEPS[stepIndex];
+  card.innerHTML = "";
+  card.appendChild(
+    step === "intro" ? renderIntro() :
+    step === "screen" ? renderScreen() :
+    step === "q8" ? renderQ8() :
+    step === "q9" ? renderOpenText("q9", "What, if anything, would stop you from switching your everyday spending to a card like this?") :
+    step === "q10" ? renderOpenText("q10", "What is the single feature you would want built next?") :
+    step === "done" ? renderDone() :
+    renderLikert(LIKERT_QUESTIONS.find(q => q.key === step))
+  );
+}
+
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+
+function renderIntro() {
+  const wrap = el("div", "step active");
+  wrap.appendChild(el("div", "eyebrow", "Final Year Project — NTU CCDS"));
+  wrap.appendChild(el("h1", "", "Help validate BitBack"));
+  wrap.appendChild(el("p", "sub",
+    "BitBack turns everyday card spending into fractional Bitcoin cashback. This short, anonymous survey checks whether the idea " +
+    "actually lands with people like you — it takes about two minutes and there's no account or personal data involved."));
+  wrap.appendChild(el("div", "spacer"));
+  const btn = el("button", "btn btn-primary", "Start");
+  btn.onclick = next;
+  wrap.appendChild(btn);
+  return wrap;
+}
+
+function renderScreen() {
+  const wrap = el("div", "step active");
+  wrap.appendChild(el("div", "eyebrow", "First, a quick check"));
+  wrap.appendChild(el("p", "q", "Do you currently trade cryptocurrency actively or regularly — for example, buying or selling on an exchange at least monthly?"));
+  const list = el("div", "choice-list");
+  [["No", false], ["Yes", true]].forEach(([label, value]) => {
+    const b = el("button", "choice", label);
+    b.onclick = () => {
+      state.screen_active_trader = value;
+      // Active traders are out of scope (Chapter 3.1) — record it and stop
+      // rather than walking them through seven questions that don't apply.
+      value ? finish() : next();
+    };
+    list.appendChild(b);
+  });
+  wrap.appendChild(list);
+  wrap.appendChild(el("div", "spacer"));
+  return wrap;
+}
+
+function renderLikert(q) {
+  const wrap = el("div", "step active");
+  wrap.appendChild(el("div", "eyebrow", `Question ${LIKERT_QUESTIONS.indexOf(q) + 1} of 7`));
+  wrap.appendChild(el("p", "q", q.text));
+  const likert = el("div", "likert");
+  const row = el("div", "likert-row");
+  for (let v = 1; v <= 5; v++) {
+    const b = el("button", "likert-btn" + (state[q.key] === v ? " selected" : ""), String(v));
+    b.onclick = () => { state[q.key] = v; next(); };
+    row.appendChild(b);
+  }
+  likert.appendChild(row);
+  const labels = el("div", "likert-labels");
+  labels.appendChild(el("span", "", "Strongly disagree"));
+  labels.appendChild(el("span", "", "Strongly agree"));
+  likert.appendChild(labels);
+  wrap.appendChild(likert);
+  wrap.appendChild(el("div", "spacer"));
+  return wrap;
+}
+
+function renderQ8() {
+  const wrap = el("div", "step active");
+  wrap.appendChild(el("div", "eyebrow", "Question 8 of 10"));
+  wrap.appendChild(el("p", "q", "Compared to a points-based cashback card you already have, this app's Bitcoin reward is…"));
+  const list = el("div", "choice-list");
+  Q8_OPTIONS.forEach(opt => {
+    const b = el("button", "choice" + (state.q8 === opt.value ? " selected" : ""), opt.label);
+    b.onclick = () => { state.q8 = opt.value; next(); };
+    list.appendChild(b);
+  });
+  wrap.appendChild(list);
+  wrap.appendChild(el("div", "spacer"));
+  return wrap;
+}
+
+function renderOpenText(key, question) {
+  const wrap = el("div", "step active");
+  const n = key === "q9" ? 9 : 10;
+  wrap.appendChild(el("div", "eyebrow", `Question ${n} of 10 · optional`));
+  wrap.appendChild(el("p", "q", question));
+  const ta = document.createElement("textarea");
+  ta.placeholder = "Type as much or as little as you like…";
+  ta.value = state[key];
+  ta.oninput = () => { state[key] = ta.value; };
+  wrap.appendChild(ta);
+  const btn = el("button", "btn btn-primary", n === 9 ? "Next" : "Submit");
+  btn.onclick = () => { if (n === 10) { submit(); } else { next(); } };
+  wrap.appendChild(btn);
+  return wrap;
+}
+
+function renderDone() {
+  const wrap = el("div", "step active center");
+  const badge = el("div", "badge", "<span>₿</span>");
+  wrap.appendChild(badge);
+  if (state._status === "submitting") {
+    wrap.appendChild(el("h1", "", "Sending…"));
+    wrap.appendChild(el("p", "sub", "One moment."));
+  } else if (state._status === "error") {
+    wrap.appendChild(el("h1", "", "Almost there"));
+    wrap.appendChild(el("p", "sub", "Your answers are saved on this page — the submission just didn't go through."));
+    wrap.appendChild(el("div", "error-note", state._error));
+    const btn = el("button", "btn btn-primary", "Retry");
+    btn.onclick = submit;
+    wrap.appendChild(btn);
+  } else if (state.screen_active_trader) {
+    wrap.appendChild(el("h1", "", "Thanks for stopping by"));
+    wrap.appendChild(el("p", "sub", "This particular study is aimed at people who are curious about Bitcoin but not yet active traders, so we'll leave it there — genuinely appreciate the click."));
+  } else {
+    wrap.appendChild(el("h1", "", "Recorded — thank you"));
+    wrap.appendChild(el("p", "sub", "Your response just became part of a real Final Year Project evaluation. No account, no email, no tracking — that's it."));
+  }
+  return wrap;
+}
+
+async function submit() {
+  state._status = "submitting";
+  state._error = null;
+  goTo(STEPS.length - 1); // "done" step, shows a submitting state via the badge
+  try {
+    const payload = {
+      source: "web",
+      screen_active_trader: state.screen_active_trader,
+      q1: state.q1, q2: state.q2, q3: state.q3, q4: state.q4,
+      q5: state.q5, q6: state.q6, q7: state.q7, q8: state.q8,
+      q9: state.q9 || null, q10: state.q10 || null,
+    };
+    const res = await fetch("/api/survey/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || `Server responded ${res.status}`);
+    }
+    state._status = "success";
+  } catch (e) {
+    state._status = "error";
+    state._error = e.message || "Couldn't reach the server. Check your connection and try again.";
+  }
+  render();
+}
+
+function finish() { submit(); }
+
+render();
+renderProgress();
+</script>
+</body>
+</html>

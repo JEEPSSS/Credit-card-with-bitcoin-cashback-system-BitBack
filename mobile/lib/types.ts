@@ -366,3 +366,18 @@ export type TwoFactorSetup = {
   otpauth_uri: string;
   backup_codes: string[];
 };
+
+/** Chapter 3.6's instrument. `source` is always "app" from this client — the
+ * standalone web page (served at /survey by the backend) sends "web" for the
+ * same endpoint, so the two channels land in one dataset. */
+export type SurveyResponseCreate = {
+  source: "app";
+  screen_active_trader: boolean;
+  q1?: number | null; q2?: number | null; q3?: number | null; q4?: number | null;
+  q5?: number | null; q6?: number | null; q7?: number | null;
+  q8?: "much_less" | "less" | "equally" | "more" | "much_more" | null;
+  q9?: string | null;
+  q10?: string | null;
+};
+
+export type SurveyResponseOut = { id: number; screened_out: boolean };

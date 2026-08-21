@@ -13,6 +13,7 @@ from app.routers import (
                          preferences,
                          referrals,
                          rewards,
+                         survey,
                          transactions,
                          wallet,
 )
@@ -29,4 +30,5 @@ ALL_ROUTERS = [
     referrals.router,
     notifications.router,
     ml.router,
+    survey.router,
 ]

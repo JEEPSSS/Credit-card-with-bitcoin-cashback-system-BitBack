@@ -6,10 +6,12 @@ mounting. Every endpoint lives in `app/routers/`.
 import asyncio
 import logging
 from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.btc_service import get_btc_price
 from app.clock import utcnow
@@ -111,6 +113,13 @@ app.add_middleware(
 
 for router in ALL_ROUTERS:
     app.include_router(router)
+
+# The standalone survey page (Chapter 3.6). Same-origin as the API it posts
+# to, so no CORS configuration is needed for it specifically. Mounted after
+# the API routers so it never shadows an /api/* path.
+_SURVEY_DIR = Path(__file__).parent / "app" / "static" / "survey"
+if _SURVEY_DIR.exists():
+    app.mount("/survey", StaticFiles(directory=_SURVEY_DIR, html=True), name="survey")
 
 
 @app.exception_handler(Exception)

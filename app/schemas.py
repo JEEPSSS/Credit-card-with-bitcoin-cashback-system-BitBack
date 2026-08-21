@@ -150,3 +150,33 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# --- survey (Chapter 3.6) ---
+class SurveyResponseCreate(BaseModel):
+    source: Literal["app", "web"]
+    screen_active_trader: bool
+    q1: int | None = Field(None, ge=1, le=5)
+    q2: int | None = Field(None, ge=1, le=5)
+    q3: int | None = Field(None, ge=1, le=5)
+    q4: int | None = Field(None, ge=1, le=5)
+    q5: int | None = Field(None, ge=1, le=5)
+    q6: int | None = Field(None, ge=1, le=5)
+    q7: int | None = Field(None, ge=1, le=5)
+    q8: Literal["much_less", "less", "equally", "more", "much_more"] | None = None
+    q9: str | None = Field(None, max_length=2000)
+    q10: str | None = Field(None, max_length=2000)
+
+
+class SurveyResponseOut(BaseModel):
+    id: int
+    screened_out: bool
+
+
+class SurveySummary(BaseModel):
+    total_responses: int
+    screened_out: int
+    included: int
+    by_source: dict[str, int]
+    likert_means: dict[str, float | None]
+    q8_distribution: dict[str, int]
