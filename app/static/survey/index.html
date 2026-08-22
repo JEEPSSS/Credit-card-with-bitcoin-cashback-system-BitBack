@@ -63,6 +63,8 @@
   .likert-btn:hover{border-color:var(--primary);}
   .likert-btn.selected{background:var(--primary); border-color:var(--primary); color:var(--on-primary);}
   .likert-labels{display:flex; justify-content:space-between; font-size:var(--fs-caption); color:var(--muted);}
+  .kbd-hint{color:var(--subtle); font-size:var(--fs-caption); text-align:center; margin:var(--space-sm) 0 0;}
+  @media (hover:none){ .kbd-hint{display:none;} }
 
   .choice-list{display:flex; flex-direction:column; gap:var(--space-sm); flex:1;}
   .choice{
@@ -78,7 +80,7 @@
     border-radius:var(--radius-control); color:var(--text); font-family:'Inter'; font-size:var(--fs-body);
     padding:var(--space-md); resize:vertical;
   }
-  textarea:focus, .likert-btn:focus-visible, .choice:focus-visible, .btn:focus-visible{
+  textarea:focus, .likert-btn:focus-visible, .choice:focus-visible, .btn:focus-visible, .back-btn:focus-visible{
     outline:2px solid var(--primary); outline-offset:2px;
   }
   textarea::placeholder{color:var(--subtle);}
@@ -116,7 +118,10 @@
   .mascot-row{display:flex; align-items:flex-start; gap:var(--space-md); margin-bottom:var(--space-lg);}
   .mascot{width:52px; height:52px; flex-shrink:0; transition:transform .2s ease;}
   .mascot.happy{transform:rotate(-6deg);}
+  .mascot.hyped{transform:rotate(-10deg) scale(1.06);}
   .mascot.thinking{transform:rotate(5deg);}
+  .mascot.skeptical{transform:rotate(4deg);}
+  .mascot.wink{transform:rotate(-4deg);}
   .mascot.sad{transform:rotate(3deg);}
   .bubble{
     position:relative; background:var(--raised); border:1px solid var(--border);
@@ -129,6 +134,15 @@
     transform:rotate(45deg);
   }
   .bubble.no-arrow::before{display:none;}
+
+  .step-header{display:flex; align-items:center; gap:var(--space-sm); margin-bottom:var(--space-sm);}
+  .step-header .eyebrow{margin-bottom:0;}
+  .back-btn{
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:var(--raised);
+    color:var(--muted); font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center;
+    justify-content:center; flex-shrink:0; padding:0;
+  }
+  .back-btn:hover{border-color:var(--primary); color:var(--primary);}
 
   /* Optional bonus game, shown only after a successful submission. Score is
      never sent anywhere — it exists purely for a bit of fun at the end. */
@@ -193,35 +207,105 @@ const state = {
  * self-contained. Commentary is additional flavour text sitting beside the
  * real question, never a replacement for it: the instrument's actual
  * wording (LIKERT_QUESTIONS / Q8_OPTIONS above) never changes.
+ *
+ * Each expression is built from three independently-varying parts (brows,
+ * eyes, mouth) plus an optional accessory, rather than a single swapped
+ * mouth path — that's what makes "hyped" read as a different feeling from
+ * "happy", not just the same face with a wider smile.
  */
-const MOUTHS = {
-  neutral: "M18,35 Q28,39 38,35",
-  happy: "M16,33 Q28,46 40,33",
-  sad: "M18,39 Q28,31 38,39",
-  thinking: "M25,37 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0",
+const EXPRESSIONS = {
+  neutral: {
+    brows: ["M14,17 Q19,15 24,17", "M32,17 Q37,15 42,17"],
+    eyes: "dot",
+    mouth: "M18,35 Q28,39 38,35",
+  },
+  happy: {
+    brows: ["M14,16 Q19,13 24,15", "M32,15 Q37,13 42,16"],
+    eyes: "dot",
+    mouth: "M16,33 Q28,46 40,33",
+  },
+  hyped: {
+    brows: ["M13,14 Q19,10 25,14", "M31,14 Q37,10 43,14"],
+    eyes: "wide",
+    mouth: "M14,31 Q28,50 42,31 Q28,44 14,31 Z",
+    accessory: "sparkle",
+  },
+  thinking: {
+    brows: ["M14,18 Q19,15 25,18", "M31,14 Q37,17 43,15"],
+    eyes: "up",
+    mouth: "M23,37 Q28,35 33,37",
+  },
+  skeptical: {
+    brows: ["M14,19 Q19,18 25,19", "M31,13 Q37,9 43,12"],
+    eyes: "half",
+    mouth: "M18,36 Q28,33 38,38",
+  },
+  wink: {
+    brows: ["M14,15 Q19,12 25,15", "M32,17 Q37,15 42,17"],
+    eyes: "wink",
+    mouth: "M16,33 Q28,44 40,33",
+  },
+  sad: {
+    brows: ["M14,20 Q19,24 25,21", "M31,21 Q37,24 43,20"],
+    eyes: "dot",
+    mouth: "M18,40 Q28,32 38,40",
+  },
 };
+function eyesSVG(type) {
+  switch (type) {
+    case "wide":
+      return `<circle cx="19" cy="24" r="4" fill="var(--on-primary)"/><circle cx="37" cy="24" r="4" fill="var(--on-primary)"/>`;
+    case "wink":
+      return `<path d="M15,24 Q19,20.5 23,24" stroke="var(--on-primary)" stroke-width="2.2" fill="none" stroke-linecap="round"/><circle cx="37" cy="24" r="3" fill="var(--on-primary)"/>`;
+    case "half":
+      return `<path d="M15,23 h8" stroke="var(--on-primary)" stroke-width="2.5" stroke-linecap="round"/><circle cx="37" cy="23" r="3" fill="var(--on-primary)"/>`;
+    case "up":
+      return `<circle cx="20" cy="22" r="2.6" fill="var(--on-primary)"/><circle cx="38" cy="22" r="2.6" fill="var(--on-primary)"/>`;
+    case "dot":
+    default:
+      return `<circle cx="19" cy="24" r="3" fill="var(--on-primary)"/><circle cx="37" cy="24" r="3" fill="var(--on-primary)"/>`;
+  }
+}
+function accessorySVG(name) {
+  if (name === "sparkle") {
+    return `<g fill="var(--on-primary)" opacity="0.9">
+      <path d="M8,10 L9.4,13.2 12.6,14.6 9.4,16 8,19.2 6.6,16 3.4,14.6 6.6,13.2 Z"/>
+      <path d="M47,7 L48,9.3 50.3,10.3 48,11.3 47,13.6 46,11.3 43.7,10.3 46,9.3 Z"/>
+    </g>`;
+  }
+  return "";
+}
 function mascotSVG(expression) {
-  const mouth = MOUTHS[expression] || MOUTHS.neutral;
+  const cfg = EXPRESSIONS[expression] || EXPRESSIONS.neutral;
+  const mouthIsFilled = cfg.mouth.includes("Z");
   return `<svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    ${accessorySVG(cfg.accessory)}
     <circle cx="28" cy="28" r="25" fill="var(--primary)" stroke="var(--primary-pressed)" stroke-width="3"/>
-    <circle cx="19" cy="24" r="3" fill="var(--on-primary)"/>
-    <circle cx="37" cy="24" r="3" fill="var(--on-primary)"/>
-    <path d="${mouth}" stroke="var(--on-primary)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="${cfg.brows[0]}" stroke="var(--on-primary)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="${cfg.brows[1]}" stroke="var(--on-primary)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    ${eyesSVG(cfg.eyes)}
+    <path d="${cfg.mouth}" stroke="var(--on-primary)" stroke-width="2.5" fill="${mouthIsFilled ? "var(--on-primary)" : "none"}" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 }
+/**
+ * Commentary voice: light, tasteful Gen Z slang — the audience this
+ * instrument is actually validating the product with. This is flavour text
+ * only; it never touches the instrument's real question wording above.
+ */
 const MASCOT_LINES = {
-  intro: ["neutral", "Hi, I'm Sat! Got two minutes? Let's make this quick and painless."],
-  screen: ["neutral", "No wrong answers here — just tell me straight."],
-  q1: ["neutral", "Bitcoin-curious? Be honest, not aspirational."],
-  q2: ["neutral", "No judgment if exchanges feel intimidating — that's kind of the whole point of this app."],
-  q3: ["happy", "This is basically our entire pitch. How'd we do?"],
-  q4: ["thinking", "Math check — did the dollar conversion actually make sense, or were you just nodding along?"],
-  q5: ["happy", "Boosts are supposed to be a little addictive. Did it work on you?"],
-  q6: ["neutral", "A forecast's only useful if you'd actually glance at it."],
-  q7: ["neutral", "Transparency over “trust us.” Agree?"],
-  q8: ["neutral", "Comparison time. Be brutal, I can take it."],
-  q9: ["thinking", "Type as little or as much as you like — I'm not grading grammar."],
-  q10: ["thinking", "Last one. What's missing?"],
+  intro: ["hyped", "Yo, I'm Sat 🪙 — got two minutes? Let's keep this quick, no cap."],
+  screen: ["thinking", "Real talk, no wrong answers here — just keep it 100 with me."],
+  screenConfirm: ["skeptical", "Hold up — you're already an active trader? Just double-checking before we dip."],
+  q1: ["thinking", "Be fr, not aspirational — are you actually Bitcoin-curious, or nah?"],
+  q2: ["neutral", "No shade if exchanges feel like a whole maze — that's literally why this app exists."],
+  q3: ["hyped", "This is basically our main character moment. How'd we do?"],
+  q4: ["thinking", "Quick math check — did the SGD number actually make sense, or were you just vibing?"],
+  q5: ["wink", "Boosts are designed to be a little addictive, ngl. Did it get you?"],
+  q6: ["neutral", "A forecast only hits different if you'd actually open the app to check it."],
+  q7: ["skeptical", "Receipts over “trust me bro” energy. Agree?"],
+  q8: ["thinking", "Comparison time — don't hold back, I can take the L if it's real."],
+  q9: ["thinking", "Say whatever's on your mind, I'm not out here grading grammar."],
+  q10: ["hyped", "Last one — what's the one feature that'd make this a must-have?"],
 };
 function mascotRow(step) {
   const [expression, line] = MASCOT_LINES[step] || ["neutral", ""];
@@ -258,6 +342,42 @@ function goTo(index) {
   render();
 }
 function next() { goTo(stepIndex + 1); }
+/** Every step so far is strictly linear (screening now branches via an
+ * in-place confirmation instead of jumping the index — see renderScreen),
+ * so "back" is just "one step earlier". Never called on step 0. */
+function goBack() { if (stepIndex > 0) goTo(stepIndex - 1); }
+
+/** A misclick on a Likert/choice screen used to be uncorrectable — nothing
+ * let you return to fix it, which was especially bad on the screening
+ * question, where a mistaken "Yes" used to submit immediately with no way
+ * back. Every question screen after the intro gets this back control. */
+function backButton(onBack) {
+  const b = el("button", "back-btn", "‹");
+  b.setAttribute("aria-label", "Go back");
+  b.type = "button";
+  b.onclick = onBack || goBack;
+  return b;
+}
+function stepHeader(eyebrowText, onBack) {
+  const row = el("div", "step-header");
+  if (onBack || stepIndex > 0) row.appendChild(backButton(onBack));
+  row.appendChild(el("div", "eyebrow", eyebrowText));
+  return row;
+}
+
+/** Desktop shortcut: press 1-5 to answer whichever Likert question is on
+ * screen, same as clicking the button. Ignored everywhere else (open-text
+ * steps have a textarea that should own the keyboard, and other steps have
+ * no numbered options to pick).
+ */
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const likertQ = LIKERT_QUESTIONS.find((q) => q.key === STEPS[stepIndex]);
+  if (likertQ && /^[1-5]$/.test(e.key)) {
+    state[likertQ.key] = Number(e.key);
+    next();
+  }
+});
 
 function render() {
   const step = STEPS[stepIndex];
@@ -282,8 +402,8 @@ function el(tag, cls, html) {
 
 function renderIntro() {
   const wrap = el("div", "step active");
+  wrap.appendChild(stepHeader("Final Year Project — NTU CCDS"));
   wrap.appendChild(mascotRow("intro"));
-  wrap.appendChild(el("div", "eyebrow", "Final Year Project — NTU CCDS"));
   wrap.appendChild(el("h1", "", "Help validate BitBack"));
   wrap.appendChild(el("p", "sub",
     "BitBack turns everyday card spending into fractional Bitcoin cashback. This short, anonymous survey checks whether the idea " +
@@ -297,17 +417,38 @@ function renderIntro() {
 
 function renderScreen() {
   const wrap = el("div", "step active");
+  // Active traders are out of scope (Chapter 3.1). A tap on "Yes" used to
+  // submit immediately with no way back — the single riskiest misclick on
+  // the whole page, since it's irreversible. Now it opens an inline
+  // confirmation instead of finishing outright.
+  if (state._confirmingScreenOut) {
+    wrap.appendChild(stepHeader("Just checking", () => {
+      state._confirmingScreenOut = false;
+      state.screen_active_trader = null;
+      render();
+    }));
+    wrap.appendChild(mascotRow("screenConfirm"));
+    wrap.appendChild(el("p", "q", "Got it — you actively trade crypto, so the survey ends here for you. Sure that's right?"));
+    const list = el("div", "choice-list");
+    const yes = el("button", "choice", "Yes, that's right");
+    const no = el("button", "choice", "No, let me change that");
+    yes.onclick = () => finish();
+    no.onclick = () => { state._confirmingScreenOut = false; state.screen_active_trader = null; render(); };
+    list.appendChild(yes);
+    list.appendChild(no);
+    wrap.appendChild(list);
+    wrap.appendChild(el("div", "spacer"));
+    return wrap;
+  }
+  wrap.appendChild(stepHeader("First, a quick check"));
   wrap.appendChild(mascotRow("screen"));
-  wrap.appendChild(el("div", "eyebrow", "First, a quick check"));
   wrap.appendChild(el("p", "q", "Do you currently trade cryptocurrency actively or regularly — for example, buying or selling on an exchange at least monthly?"));
   const list = el("div", "choice-list");
   [["No", false], ["Yes", true]].forEach(([label, value]) => {
     const b = el("button", "choice", label);
     b.onclick = () => {
       state.screen_active_trader = value;
-      // Active traders are out of scope (Chapter 3.1) — record it and stop
-      // rather than walking them through seven questions that don't apply.
-      value ? finish() : next();
+      if (value) { state._confirmingScreenOut = true; render(); } else { next(); }
     };
     list.appendChild(b);
   });
@@ -318,8 +459,8 @@ function renderScreen() {
 
 function renderLikert(q) {
   const wrap = el("div", "step active");
+  wrap.appendChild(stepHeader(`Question ${LIKERT_QUESTIONS.indexOf(q) + 1} of 7`));
   wrap.appendChild(mascotRow(q.key));
-  wrap.appendChild(el("div", "eyebrow", `Question ${LIKERT_QUESTIONS.indexOf(q) + 1} of 7`));
   wrap.appendChild(el("p", "q", q.text));
   const likert = el("div", "likert");
   const row = el("div", "likert-row");
@@ -334,14 +475,15 @@ function renderLikert(q) {
   labels.appendChild(el("span", "", "Strongly agree"));
   likert.appendChild(labels);
   wrap.appendChild(likert);
+  wrap.appendChild(el("p", "kbd-hint", "Tip: press 1–5 on your keyboard"));
   wrap.appendChild(el("div", "spacer"));
   return wrap;
 }
 
 function renderQ8() {
   const wrap = el("div", "step active");
+  wrap.appendChild(stepHeader("Question 8 of 10"));
   wrap.appendChild(mascotRow("q8"));
-  wrap.appendChild(el("div", "eyebrow", "Question 8 of 10"));
   wrap.appendChild(el("p", "q", "Compared to a points-based cashback card you already have, this app's Bitcoin reward is…"));
   const list = el("div", "choice-list");
   Q8_OPTIONS.forEach(opt => {
@@ -357,8 +499,8 @@ function renderQ8() {
 function renderOpenText(key, question) {
   const wrap = el("div", "step active");
   const n = key === "q9" ? 9 : 10;
+  wrap.appendChild(stepHeader(`Question ${n} of 10 · optional`));
   wrap.appendChild(mascotRow(key));
-  wrap.appendChild(el("div", "eyebrow", `Question ${n} of 10 · optional`));
   wrap.appendChild(el("p", "q", question));
   const ta = document.createElement("textarea");
   ta.placeholder = "Type as much or as little as you like…";
@@ -379,19 +521,27 @@ function renderDone() {
     wrap.appendChild(el("h1", "", "Sending…"));
     wrap.appendChild(el("p", "sub", "One moment."));
   } else if (state._status === "error") {
-    wrap.appendChild(mascotRowCentered("sad", "Ugh, that didn't send. Your answers are still right here though."));
+    wrap.appendChild(mascotRowCentered("sad", "Ugh, that flopped — your answers are still safe right here though."));
     wrap.appendChild(el("h1", "", "Almost there"));
     wrap.appendChild(el("p", "sub", "Your answers are saved on this page — the submission just didn't go through."));
     wrap.appendChild(el("div", "error-note", state._error));
-    const btn = el("button", "btn btn-primary", "Retry");
-    btn.onclick = submit;
-    wrap.appendChild(btn);
+    const row = el("div", "btn-row");
+    const retry = el("button", "btn btn-primary", "Retry");
+    const edit = el("button", "btn btn-ghost", "Edit my answers");
+    retry.onclick = submit;
+    // A network failure shouldn't strand you on a dead-end screen with only
+    // "try the exact same thing again" — this reopens the last question so
+    // you can actually change something before resubmitting.
+    edit.onclick = () => { state._status = null; state._error = null; goTo(STEPS.length - 2); };
+    row.appendChild(retry);
+    row.appendChild(edit);
+    wrap.appendChild(row);
   } else if (state.screen_active_trader) {
-    wrap.appendChild(mascotRowCentered("neutral", "Ah, you're already deep in crypto — this one's for the curious-but-cautious crowd. Appreciate the click though."));
+    wrap.appendChild(mascotRowCentered("neutral", "Ah, you're already deep in the crypto game — this one's for the curious-but-cautious crowd. Appreciate the click though."));
     wrap.appendChild(el("h1", "", "Thanks for stopping by"));
     wrap.appendChild(el("p", "sub", "This particular study is aimed at people who are curious about Bitcoin but not yet active traders, so we'll leave it there."));
   } else {
-    wrap.appendChild(mascotRowCentered("happy", "That's genuinely useful data now. Thank you!"));
+    wrap.appendChild(mascotRowCentered("hyped", "Say less — that's real data now, and you just helped build this. Thank you!"));
     wrap.appendChild(el("h1", "", "Recorded — thank you"));
     wrap.appendChild(el("p", "sub", "Your response just became part of a real Final Year Project evaluation. No account, no email, no tracking — that's it."));
     wrap.appendChild(renderGameSection());
