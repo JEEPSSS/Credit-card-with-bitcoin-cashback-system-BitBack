@@ -109,6 +109,39 @@
     margin-top:var(--space-md);
   }
   .footnote{color:var(--subtle); font-size:var(--fs-caption); text-align:center; margin-top:var(--space-lg); line-height:1.5;}
+
+  /* Mascot + dialogue. Purely decorative commentary alongside the real
+     question above it — never a restatement of it, so the instrument's
+     wording (quoted in the FYP report) stays exactly as written. */
+  .mascot-row{display:flex; align-items:flex-start; gap:var(--space-md); margin-bottom:var(--space-lg);}
+  .mascot{width:52px; height:52px; flex-shrink:0; transition:transform .2s ease;}
+  .mascot.happy{transform:rotate(-6deg);}
+  .mascot.thinking{transform:rotate(5deg);}
+  .mascot.sad{transform:rotate(3deg);}
+  .bubble{
+    position:relative; background:var(--raised); border:1px solid var(--border);
+    border-radius:var(--radius-control); padding:var(--space-sm) var(--space-md);
+    font-size:var(--fs-caption); color:var(--bright); line-height:1.4; flex:1;
+  }
+  .bubble::before{
+    content:""; position:absolute; left:-7px; top:14px; width:12px; height:12px;
+    background:var(--raised); border-left:1px solid var(--border); border-bottom:1px solid var(--border);
+    transform:rotate(45deg);
+  }
+  .bubble.no-arrow::before{display:none;}
+
+  /* Optional bonus game, shown only after a successful submission. Score is
+     never sent anywhere — it exists purely for a bit of fun at the end. */
+  .game-prompt{border:1px dashed var(--border); border-radius:var(--radius-control); padding:var(--space-lg); margin-top:var(--space-lg);}
+  .game-hud{display:flex; justify-content:space-between; font-family:'JetBrains Mono'; font-size:var(--fs-caption); color:var(--muted); margin-bottom:var(--space-sm);}
+  .game-area{position:relative; height:200px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--radius-control); overflow:hidden;}
+  .coin-target{
+    position:absolute; width:34px; height:34px; border-radius:50%; background:var(--primary);
+    border:2px solid var(--primary-pressed); color:var(--on-primary); font-family:'JetBrains Mono';
+    font-size:13px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    animation:pop .12s ease; user-select:none;
+  }
+  @keyframes pop{from{transform:scale(0.3); opacity:0;} to{transform:scale(1); opacity:1;}}
 </style>
 </head>
 <body>
@@ -150,7 +183,53 @@ const state = {
   screen_active_trader: null,
   q1: null, q2: null, q3: null, q4: null, q5: null, q6: null, q7: null,
   q8: null, q9: "", q10: "",
+  game: "idle", // idle | playing | finished | closed — cosmetic only, never submitted
+  gameScore: 0,
 };
+
+/**
+ * Sat, the mascot. A flat-style illustrated coin with a swappable
+ * expression — no external art assets, just inline SVG so the page stays
+ * self-contained. Commentary is additional flavour text sitting beside the
+ * real question, never a replacement for it: the instrument's actual
+ * wording (LIKERT_QUESTIONS / Q8_OPTIONS above) never changes.
+ */
+const MOUTHS = {
+  neutral: "M18,35 Q28,39 38,35",
+  happy: "M16,33 Q28,46 40,33",
+  sad: "M18,39 Q28,31 38,39",
+  thinking: "M25,37 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0",
+};
+function mascotSVG(expression) {
+  const mouth = MOUTHS[expression] || MOUTHS.neutral;
+  return `<svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="28" cy="28" r="25" fill="var(--primary)" stroke="var(--primary-pressed)" stroke-width="3"/>
+    <circle cx="19" cy="24" r="3" fill="var(--on-primary)"/>
+    <circle cx="37" cy="24" r="3" fill="var(--on-primary)"/>
+    <path d="${mouth}" stroke="var(--on-primary)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+const MASCOT_LINES = {
+  intro: ["neutral", "Hi, I'm Sat! Got two minutes? Let's make this quick and painless."],
+  screen: ["neutral", "No wrong answers here — just tell me straight."],
+  q1: ["neutral", "Bitcoin-curious? Be honest, not aspirational."],
+  q2: ["neutral", "No judgment if exchanges feel intimidating — that's kind of the whole point of this app."],
+  q3: ["happy", "This is basically our entire pitch. How'd we do?"],
+  q4: ["thinking", "Math check — did the dollar conversion actually make sense, or were you just nodding along?"],
+  q5: ["happy", "Boosts are supposed to be a little addictive. Did it work on you?"],
+  q6: ["neutral", "A forecast's only useful if you'd actually glance at it."],
+  q7: ["neutral", "Transparency over “trust us.” Agree?"],
+  q8: ["neutral", "Comparison time. Be brutal, I can take it."],
+  q9: ["thinking", "Type as little or as much as you like — I'm not grading grammar."],
+  q10: ["thinking", "Last one. What's missing?"],
+};
+function mascotRow(step) {
+  const [expression, line] = MASCOT_LINES[step] || ["neutral", ""];
+  const row = document.createElement("div");
+  row.className = "mascot-row";
+  row.innerHTML = `<div class="mascot ${expression}">${mascotSVG(expression)}</div><div class="bubble">${line}</div>`;
+  return row;
+}
 
 // step order: intro -> screen -> 7 likert -> q8 -> q9 -> q10 -> submitting -> done
 const STEPS = ["intro", "screen", ...LIKERT_QUESTIONS.map(q => q.key), "q8", "q9", "q10", "done"];
@@ -203,6 +282,7 @@ function el(tag, cls, html) {
 
 function renderIntro() {
   const wrap = el("div", "step active");
+  wrap.appendChild(mascotRow("intro"));
   wrap.appendChild(el("div", "eyebrow", "Final Year Project — NTU CCDS"));
   wrap.appendChild(el("h1", "", "Help validate BitBack"));
   wrap.appendChild(el("p", "sub",
@@ -217,6 +297,7 @@ function renderIntro() {
 
 function renderScreen() {
   const wrap = el("div", "step active");
+  wrap.appendChild(mascotRow("screen"));
   wrap.appendChild(el("div", "eyebrow", "First, a quick check"));
   wrap.appendChild(el("p", "q", "Do you currently trade cryptocurrency actively or regularly — for example, buying or selling on an exchange at least monthly?"));
   const list = el("div", "choice-list");
@@ -237,6 +318,7 @@ function renderScreen() {
 
 function renderLikert(q) {
   const wrap = el("div", "step active");
+  wrap.appendChild(mascotRow(q.key));
   wrap.appendChild(el("div", "eyebrow", `Question ${LIKERT_QUESTIONS.indexOf(q) + 1} of 7`));
   wrap.appendChild(el("p", "q", q.text));
   const likert = el("div", "likert");
@@ -258,6 +340,7 @@ function renderLikert(q) {
 
 function renderQ8() {
   const wrap = el("div", "step active");
+  wrap.appendChild(mascotRow("q8"));
   wrap.appendChild(el("div", "eyebrow", "Question 8 of 10"));
   wrap.appendChild(el("p", "q", "Compared to a points-based cashback card you already have, this app's Bitcoin reward is…"));
   const list = el("div", "choice-list");
@@ -274,6 +357,7 @@ function renderQ8() {
 function renderOpenText(key, question) {
   const wrap = el("div", "step active");
   const n = key === "q9" ? 9 : 10;
+  wrap.appendChild(mascotRow(key));
   wrap.appendChild(el("div", "eyebrow", `Question ${n} of 10 · optional`));
   wrap.appendChild(el("p", "q", question));
   const ta = document.createElement("textarea");
@@ -295,6 +379,7 @@ function renderDone() {
     wrap.appendChild(el("h1", "", "Sending…"));
     wrap.appendChild(el("p", "sub", "One moment."));
   } else if (state._status === "error") {
+    wrap.appendChild(mascotRowCentered("sad", "Ugh, that didn't send. Your answers are still right here though."));
     wrap.appendChild(el("h1", "", "Almost there"));
     wrap.appendChild(el("p", "sub", "Your answers are saved on this page — the submission just didn't go through."));
     wrap.appendChild(el("div", "error-note", state._error));
@@ -302,13 +387,104 @@ function renderDone() {
     btn.onclick = submit;
     wrap.appendChild(btn);
   } else if (state.screen_active_trader) {
+    wrap.appendChild(mascotRowCentered("neutral", "Ah, you're already deep in crypto — this one's for the curious-but-cautious crowd. Appreciate the click though."));
     wrap.appendChild(el("h1", "", "Thanks for stopping by"));
-    wrap.appendChild(el("p", "sub", "This particular study is aimed at people who are curious about Bitcoin but not yet active traders, so we'll leave it there — genuinely appreciate the click."));
+    wrap.appendChild(el("p", "sub", "This particular study is aimed at people who are curious about Bitcoin but not yet active traders, so we'll leave it there."));
   } else {
+    wrap.appendChild(mascotRowCentered("happy", "That's genuinely useful data now. Thank you!"));
     wrap.appendChild(el("h1", "", "Recorded — thank you"));
     wrap.appendChild(el("p", "sub", "Your response just became part of a real Final Year Project evaluation. No account, no email, no tracking — that's it."));
+    wrap.appendChild(renderGameSection());
   }
   return wrap;
+}
+
+/** Same mascot, laid out centered under the badge instead of beside a
+ * question — used only on the completion screen. */
+function mascotRowCentered(expression, line) {
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:16px;";
+  row.innerHTML = `<div class="mascot ${expression}" style="width:44px;height:44px;">${mascotSVG(expression)}</div>
+    <div class="bubble no-arrow" style="max-width:320px;">${line}</div>`;
+  return row;
+}
+
+/** The optional bonus game. Purely cosmetic — its score is never read by
+ * anything that submits data, so it cannot bias or gate the real survey. */
+function renderGameSection() {
+  const box = el("div", "game-prompt");
+  if (state.game === "idle") {
+    box.appendChild(el("p", "sub", "Want a 10-second bonus game before you go? Totally optional — it doesn't affect your answers."));
+    const row = el("div", "btn-row");
+    const play = el("button", "btn btn-primary", "Play");
+    const skip = el("button", "btn btn-ghost", "No thanks");
+    play.onclick = () => { state.game = "playing"; render(); requestAnimationFrame(() => startGameLoop(document.getElementById("game-area"))); };
+    skip.onclick = () => { state.game = "closed"; render(); };
+    row.appendChild(play); row.appendChild(skip);
+    box.style.marginTop = "16px";
+    box.appendChild(row);
+  } else if (state.game === "playing") {
+    box.style.border = "none"; box.style.padding = "0"; box.style.marginTop = "16px";
+    const hud = el("div", "game-hud");
+    hud.innerHTML = `<span>Catch the sats</span><span><span id="game-score">0</span> caught · <span id="game-time">10</span>s</span>`;
+    const area = el("div", "game-area");
+    area.id = "game-area";
+    box.appendChild(hud);
+    box.appendChild(area);
+  } else if (state.game === "finished") {
+    const tier = state.gameScore >= 8 ? "Show-off." : state.gameScore >= 4 ? "Solid reflexes." : "Rusty — but hey, you tried.";
+    box.appendChild(el("p", "sub", `You caught ${state.gameScore} sat${state.gameScore === 1 ? "" : "s"}. ${tier}`));
+    const row = el("div", "btn-row");
+    const again = el("button", "btn btn-primary", "Play again");
+    const done = el("button", "btn btn-ghost", "I'm done");
+    again.onclick = () => { state.game = "idle"; render(); };
+    done.onclick = () => { state.game = "closed"; render(); };
+    row.appendChild(again); row.appendChild(done);
+    box.style.marginTop = "16px";
+    box.appendChild(row);
+  } else {
+    return el("div"); // "closed" — nothing more to show
+  }
+  return box;
+}
+
+function startGameLoop(area) {
+  if (!area) return;
+  let score = 0;
+  let timeLeft = 10;
+  const scoreEl = document.getElementById("game-score");
+  const timeEl = document.getElementById("game-time");
+
+  const spawn = () => {
+    const size = 34;
+    const maxX = Math.max(0, area.clientWidth - size);
+    const maxY = Math.max(0, area.clientHeight - size);
+    const coin = el("div", "coin-target", "₿");
+    coin.style.left = Math.round(Math.random() * maxX) + "px";
+    coin.style.top = Math.round(Math.random() * maxY) + "px";
+    const missTimer = setTimeout(() => coin.remove(), 850);
+    coin.onclick = () => {
+      clearTimeout(missTimer);
+      coin.remove();
+      score += 1;
+      if (scoreEl) scoreEl.textContent = String(score);
+    };
+    area.appendChild(coin);
+  };
+
+  const spawnTimer = setInterval(spawn, 650);
+  const clock = setInterval(() => {
+    timeLeft -= 1;
+    if (timeEl) timeEl.textContent = String(Math.max(0, timeLeft));
+    if (timeLeft <= 0) {
+      clearInterval(spawnTimer);
+      clearInterval(clock);
+      area.innerHTML = "";
+      state.game = "finished";
+      state.gameScore = score;
+      render();
+    }
+  }, 1000);
 }
 
 async function submit() {
