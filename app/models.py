@@ -271,12 +271,22 @@ class SurveyResponse(Base):
     active trader (Chapter 3.1's segment definition excludes them) still gets
     a row, with `screened_out=True` and every question left null, so the
     funnel itself is measurable rather than silently discarded.
+
+    `has_used_app` is a second screening dimension, orthogonal to the active-
+    trader one: Q4-Q7 presuppose specific screens (the reward preview, the
+    forecast, the fraud-flagging view), so they are only meaningful for a
+    respondent who has actually seen them. The in-app channel implies this by
+    construction (reaching that screen means you're inside the app already);
+    the web channel asks explicitly and nulls Q4-Q7 out for anyone who says
+    no, rather than storing an answer to a question they couldn't actually
+    have a grounded opinion on.
     """
     __tablename__ = "survey_responses"
 
     id = Column(Integer, primary_key=True)
     source = Column(String(10), nullable=False)  # "app" | "web"
     screened_out = Column(Boolean, default=False, nullable=False)
+    has_used_app = Column(Boolean, nullable=True)
     q1 = Column(Integer, nullable=True)
     q2 = Column(Integer, nullable=True)
     q3 = Column(Integer, nullable=True)

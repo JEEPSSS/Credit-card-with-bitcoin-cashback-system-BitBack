@@ -24,7 +24,13 @@ from app.schemas import SurveyResponseCreate, SurveyResponseOut, SurveySummary
 
 router = APIRouter(prefix="/api/survey", tags=["survey"])
 
-LIKERT_FIELDS = ["q1", "q2", "q3", "q4", "q5", "q6", "q7"]
+# Concept items: answerable by anyone who understands the pitch, used or not.
+CONCEPT_LIKERT_FIELDS = ["q1", "q2", "q3"]
+# App-experience items: presuppose specific screens (reward preview, forecast,
+# fraud-flagging view) that only a respondent who has used the prototype has
+# actually seen -- see the has_used_app docstring on the model.
+APP_EXPERIENCE_FIELDS = ["q4", "q5", "q6", "q7"]
+LIKERT_FIELDS = CONCEPT_LIKERT_FIELDS + APP_EXPERIENCE_FIELDS
 Q8_OPTIONS = ["much_less", "less", "equally", "more", "much_more"]
 
 
@@ -34,25 +40,39 @@ def submit_response(body: SurveyResponseCreate, request: Request, db: Session = 
     # respondent, who submits once.
     rate_limit(f"survey:{client_ip(request)}", 5, window=3600)
 
+    used_app = bool(body.has_used_app)
     if not body.screen_active_trader:
         # Chapter 3.1 defines the target user as crypto-curious, not
         # crypto-active; Chapter 3.6's sampling plan screens active traders
         # out before the substantive questions, so a real answer set is
-        # required here.
-        missing = [f for f in LIKERT_FIELDS if getattr(body, f) is None] + (["q8"] if body.q8 is None else [])
+        # required here. Q4-Q7 are only required when the respondent has
+        # actually used the app -- see APP_EXPERIENCE_FIELDS above.
+        missing = [f for f in CONCEPT_LIKERT_FIELDS if getattr(body, f) is None]
+        if body.q8 is None:
+            missing.append("q8")
+        if body.has_used_app is None:
+            missing.append("has_used_app")
+        elif used_app:
+            missing += [f for f in APP_EXPERIENCE_FIELDS if getattr(body, f) is None]
         if missing:
             raise HTTPException(400, f"Missing required answers: {', '.join(missing)}")
 
+    # Q4-Q7 are dropped (not merely left unrequired) for anyone who hasn't
+    # used the app, same as every field is dropped for a screened-out row --
+    # storing an answer to a question the respondent had no grounded basis
+    # to answer would misrepresent what was actually measured.
+    skip_app_items = body.screen_active_trader or not used_app
     row = SurveyResponse(
         source=body.source,
         screened_out=body.screen_active_trader,
+        has_used_app=None if body.screen_active_trader else used_app,
         q1=None if body.screen_active_trader else body.q1,
         q2=None if body.screen_active_trader else body.q2,
         q3=None if body.screen_active_trader else body.q3,
-        q4=None if body.screen_active_trader else body.q4,
-        q5=None if body.screen_active_trader else body.q5,
-        q6=None if body.screen_active_trader else body.q6,
-        q7=None if body.screen_active_trader else body.q7,
+        q4=None if skip_app_items else body.q4,
+        q5=None if skip_app_items else body.q5,
+        q6=None if skip_app_items else body.q6,
+        q7=None if skip_app_items else body.q7,
         q8=None if body.screen_active_trader else body.q8,
         q9=None if body.screen_active_trader else body.q9,
         q10=None if body.screen_active_trader else body.q10,
@@ -69,11 +89,15 @@ def summary(db: Session = Depends(get_db)):
     not consent to having published live."""
     rows = db.query(SurveyResponse).all()
     included = [r for r in rows if not r.screened_out]
+    used_app_count = sum(1 for r in included if r.has_used_app)
 
     by_source: dict[str, int] = {}
     for r in rows:
         by_source[r.source] = by_source.get(r.source, 0) + 1
 
+    # q1-q3's denominator is every included respondent; q4-q7's is only
+    # used_app_count of them -- getattr(...) is None already excludes the
+    # nulled-out non-users, so this falls out without a separate branch.
     likert_means: dict[str, float | None] = {}
     for f in LIKERT_FIELDS:
         values = [getattr(r, f) for r in included if getattr(r, f) is not None]
@@ -88,6 +112,7 @@ def summary(db: Session = Depends(get_db)):
         total_responses=len(rows),
         screened_out=len(rows) - len(included),
         included=len(included),
+        used_app_count=used_app_count,
         by_source=by_source,
         likert_means=likert_means,
         q8_distribution=q8_distribution,

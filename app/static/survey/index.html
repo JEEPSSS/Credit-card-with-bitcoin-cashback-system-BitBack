@@ -195,6 +195,12 @@ const Q8_OPTIONS = [
 
 const state = {
   screen_active_trader: null,
+  // Unlike the in-app screen (where reaching the survey already implies app
+  // use), this page can be opened cold by someone who's never touched
+  // BitBack — so it has to ask. Q4-Q7 presuppose specific screens (the
+  // forecast, the fraud-flagging view) that only make sense to answer if
+  // this is true.
+  has_used_app: null,
   q1: null, q2: null, q3: null, q4: null, q5: null, q6: null, q7: null,
   q8: null, q9: "", q10: "",
   game: "idle", // idle | playing | finished | closed — cosmetic only, never submitted
@@ -296,6 +302,7 @@ const MASCOT_LINES = {
   intro: ["hyped", "Yo, I'm Sat 🪙 — got two minutes? Let's keep this quick, no cap."],
   screen: ["thinking", "Real talk, no wrong answers here — just keep it 100 with me."],
   screenConfirm: ["skeptical", "Hold up — you're already an active trader? Just double-checking before we dip."],
+  appUsage: ["thinking", "Quick one — have you actually poked around the BitBack app, or is this your first time hearing about it?"],
   q1: ["thinking", "Be fr, not aspirational — are you actually Bitcoin-curious, or nah?"],
   q2: ["neutral", "No shade if exchanges feel like a whole maze — that's literally why this app exists."],
   q3: ["hyped", "This is basically our main character moment. How'd we do?"],
@@ -315,8 +322,18 @@ function mascotRow(step) {
   return row;
 }
 
-// step order: intro -> screen -> 7 likert -> q8 -> q9 -> q10 -> submitting -> done
-const STEPS = ["intro", "screen", ...LIKERT_QUESTIONS.map(q => q.key), "q8", "q9", "q10", "done"];
+// step order: intro -> screen -> appUsage -> (q1-q3, q4-q7 only if used the
+// app) -> q8 -> q9 -> q10 -> submitting -> done. MASTER_STEPS lists every
+// possible step; STEPS is the subset actually active for this respondent,
+// recomputed the moment appUsage is answered (see submit handlers below) so
+// every index after that point already points at the right thing.
+const MASTER_STEPS = ["intro", "screen", "appUsage", ...LIKERT_QUESTIONS.map(q => q.key), "q8", "q9", "q10", "done"];
+function isStepActive(key) {
+  if (key === "q4" || key === "q5" || key === "q6" || key === "q7") return state.has_used_app === true;
+  return true;
+}
+function computeSteps() { return MASTER_STEPS.filter(isStepActive); }
+let STEPS = computeSteps();
 let stepIndex = 0;
 
 const card = document.getElementById("card");
@@ -385,6 +402,7 @@ function render() {
   card.appendChild(
     step === "intro" ? renderIntro() :
     step === "screen" ? renderScreen() :
+    step === "appUsage" ? renderAppUsage() :
     step === "q8" ? renderQ8() :
     step === "q9" ? renderOpenText("q9", "What, if anything, would stop you from switching your everyday spending to a card like this?") :
     step === "q10" ? renderOpenText("q10", "What is the single feature you would want built next?") :
@@ -457,9 +475,34 @@ function renderScreen() {
   return wrap;
 }
 
-function renderLikert(q) {
+function renderAppUsage() {
   const wrap = el("div", "step active");
-  wrap.appendChild(stepHeader(`Question ${LIKERT_QUESTIONS.indexOf(q) + 1} of 7`));
+  wrap.appendChild(stepHeader("Before the questions"));
+  wrap.appendChild(mascotRow("appUsage"));
+  wrap.appendChild(el("p", "q", "Have you used the BitBack app, or seen a walkthrough of it?"));
+  wrap.appendChild(el("p", "sub", "A few of the questions ahead are about specific screens — this just makes sure you only get asked the ones you can actually answer."));
+  const list = el("div", "choice-list");
+  [["Yes, I've used it", true], ["No, this is new to me", false]].forEach(([label, value]) => {
+    const b = el("button", "choice", label);
+    b.onclick = () => {
+      state.has_used_app = value;
+      STEPS = computeSteps(); // reshape the remaining path before advancing into it
+      next();
+    };
+    list.appendChild(b);
+  });
+  wrap.appendChild(list);
+  wrap.appendChild(el("div", "spacer"));
+  return wrap;
+}
+
+function renderLikert(q) {
+  // Numbered against only the Likert questions this respondent is actually
+  // being asked, not the fixed list of 7 -- someone who skips q4-q7 sees
+  // "Question 1 of 3", not a "1 of 7" that never reaches 4.
+  const activeLikert = LIKERT_QUESTIONS.filter(lq => isStepActive(lq.key));
+  const wrap = el("div", "step active");
+  wrap.appendChild(stepHeader(`Question ${activeLikert.indexOf(q) + 1} of ${activeLikert.length}`));
   wrap.appendChild(mascotRow(q.key));
   wrap.appendChild(el("p", "q", q.text));
   const likert = el("div", "likert");
@@ -645,6 +688,7 @@ async function submit() {
     const payload = {
       source: "web",
       screen_active_trader: state.screen_active_trader,
+      has_used_app: state.has_used_app,
       q1: state.q1, q2: state.q2, q3: state.q3, q4: state.q4,
       q5: state.q5, q6: state.q6, q7: state.q7, q8: state.q8,
       q9: state.q9 || null, q10: state.q10 || null,

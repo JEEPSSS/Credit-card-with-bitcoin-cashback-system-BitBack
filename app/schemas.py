@@ -156,6 +156,12 @@ class ResetPasswordRequest(BaseModel):
 class SurveyResponseCreate(BaseModel):
     source: Literal["app", "web"]
     screen_active_trader: bool
+    # Whether the respondent has actually used the prototype or seen a
+    # walkthrough of it. Q4-Q7 presuppose specific screens, so they're only
+    # collected when this is true. The in-app channel always sends true
+    # (reaching this screen implies exposure); the web channel asks it
+    # explicitly. None only for a screened-out respondent's row.
+    has_used_app: bool | None = None
     q1: int | None = Field(None, ge=1, le=5)
     q2: int | None = Field(None, ge=1, le=5)
     q3: int | None = Field(None, ge=1, le=5)
@@ -177,6 +183,12 @@ class SurveySummary(BaseModel):
     total_responses: int
     screened_out: int
     included: int
+    # Of `included`, how many actually answered Q4-Q7 (used_app_count) vs.
+    # only the concept items (included - used_app_count). The two Likert
+    # means groups below are computed over different denominators for
+    # exactly this reason -- q1/q2/q3 over all of `included`, q4-q7 over
+    # only `used_app_count` of them.
+    used_app_count: int
     by_source: dict[str, int]
     likert_means: dict[str, float | None]
     q8_distribution: dict[str, int]

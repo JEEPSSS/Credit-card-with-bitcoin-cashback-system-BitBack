@@ -373,6 +373,10 @@ export type TwoFactorSetup = {
 export type SurveyResponseCreate = {
   source: "app";
   screen_active_trader: boolean;
+  // Always true from this client -- reaching this screen means you're
+  // already inside the app. The standalone web page (which a respondent can
+  // reach without ever having used BitBack) asks this explicitly instead.
+  has_used_app: boolean;
   q1?: number | null; q2?: number | null; q3?: number | null; q4?: number | null;
   q5?: number | null; q6?: number | null; q7?: number | null;
   q8?: "much_less" | "less" | "equally" | "more" | "much_more" | null;

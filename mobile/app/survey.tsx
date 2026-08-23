@@ -155,6 +155,9 @@ export default function Survey() {
   const doSubmit = async (payload: Answers) => {
     const result = await submitAction.run({
       screen_active_trader: !!payload.screen_active_trader,
+      // This screen only exists inside the app, so reaching it already means
+      // the respondent has used it -- see the type's own comment.
+      has_used_app: true,
       q1: payload.q1, q2: payload.q2, q3: payload.q3, q4: payload.q4,
       q5: payload.q5, q6: payload.q6, q7: payload.q7, q8: payload.q8,
       q9: payload.q9 || null, q10: payload.q10 || null,
