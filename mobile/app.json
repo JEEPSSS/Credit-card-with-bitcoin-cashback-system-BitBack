@@ -7,13 +7,40 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "splash": { "resizeMode": "contain", "backgroundColor": "#0A0A0B" },
-    "ios": { "supportsTablet": false, "bundleIdentifier": "app.bitback.mobile" },
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0B"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.bitback.mobile"
+    },
     "android": {
       "package": "app.bitback.mobile",
-      "adaptiveIcon": { "backgroundColor": "#0A0A0B" }
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0B"
+      }
     },
-    "plugins": ["expo-router", "expo-font", "expo-secure-store"],
-    "experiments": { "typedRoutes": true }
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9552e0f8-3d8e-42a9-af7d-223ad2cbda44"
+      }
+    },
+    "owner": "jeebsss",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9552e0f8-3d8e-42a9-af7d-223ad2cbda44"
+    }
   }
 }
