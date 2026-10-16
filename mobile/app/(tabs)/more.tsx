@@ -1,7 +1,8 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Linking } from "react-native";
 import { router } from "expo-router";
 import * as Icons from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
+import { BASE_URL } from "@/lib/api";
 import { Button, COLORS, Header, Label, Screen } from "@/components/ui";
 import { fontSize, iconSize } from "@/lib/theme";
 
@@ -73,6 +74,20 @@ export default function More() {
         </View>
       ))}
       <Button label="Sign out" variant="ghost" onPress={signOut} />
+      <Pressable
+        onPress={() => router.push("/delete-account" as any)}
+        accessibilityRole="button"
+        style={({ pressed }) => ({ alignItems: "center", paddingVertical: 16, marginTop: 8, opacity: pressed ? 0.6 : 1 })}
+      >
+        <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>Delete account</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}
+        accessibilityRole="link"
+        style={({ pressed }) => ({ alignItems: "center", paddingVertical: 8, opacity: pressed ? 0.6 : 1 })}
+      >
+        <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>Privacy policy</Text>
+      </Pressable>
     </Screen>
   );
 }

@@ -7,6 +7,7 @@ from app.routers import (
                          analytics,
                          auth,
                          goals,
+                         legal,
                          market,
                          ml,
                          notifications,
@@ -31,4 +32,5 @@ ALL_ROUTERS = [
     notifications.router,
     ml.router,
     survey.router,
+    legal.router,
 ]

@@ -89,12 +89,18 @@ export function Card({
 export function Button({
   label, onPress, variant = "primary", disabled, loading, style,
 }: {
-  label: string; onPress: () => void; variant?: "primary" | "secondary" | "ghost";
+  label: string; onPress: () => void; variant?: "primary" | "secondary" | "ghost" | "danger";
   disabled?: boolean; loading?: boolean; style?: ViewStyle;
 }) {
+  // `danger` is for the one irreversible action in the app. It uses the soft
+  // danger fill rather than solid red so it reads as serious, not as an alarm.
   const bg =
-    variant === "primary" ? COLORS.primary : variant === "secondary" ? COLORS.elevated : "transparent";
-  const fg = variant === "primary" ? COLORS.onPrimary : COLORS.text;
+    variant === "primary" ? COLORS.primary
+    : variant === "secondary" ? COLORS.elevated
+    : variant === "danger" ? COLORS.dangerSoft
+    : "transparent";
+  const fg =
+    variant === "primary" ? COLORS.onPrimary : variant === "danger" ? COLORS.danger : COLORS.text;
   return (
     <Pressable
       accessibilityRole="button"
@@ -108,7 +114,8 @@ export function Button({
         styles.button,
         {
           backgroundColor: bg,
-          borderWidth: variant === "ghost" ? 1 : 0,
+          borderWidth: variant === "ghost" || variant === "danger" ? 1 : 0,
+          borderColor: variant === "danger" ? COLORS.dangerEdge : COLORS.border,
           opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
         },
         style,

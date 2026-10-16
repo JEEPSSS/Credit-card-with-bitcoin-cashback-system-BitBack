@@ -37,11 +37,12 @@ machine. This is the exact sequence.
 
 ## Point the build at your deployed backend
 
-`eas.json`'s `preview` build profile has an `env.EXPO_PUBLIC_API_URL` entry
-with a placeholder value. Before building, replace it with your actual
-Render URL from `DEPLOY.md` (e.g. `https://bitback-xyz.onrender.com`) —
-this is what gets compiled into the app so it talks to your real backend
-instead of `localhost`, which would be unreachable from anyone else's phone.
+`eas.json` sets `EXPO_PUBLIC_API_URL` once, in a `base` profile that both
+`preview` and `production` extend. It is compiled into the app, so it must be
+your Render URL (currently `https://bitcoin-survey.onrender.com`); if the
+service moves, change it there and rebuild. Before this, only `preview` set it,
+so a `production` build would have called `http://localhost:8000` - which, on
+anyone's phone, is the phone.
 
 ## Build the installable Android app
 

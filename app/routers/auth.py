@@ -5,6 +5,7 @@ import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app import anomaly_detector
 from app.auth import (
     create_access_token,
     decode_claims,
@@ -17,9 +18,17 @@ from app.auth import (
 )
 from app.config import settings
 from app.database import get_db
-from app.models import AutoWithdrawConfig, User, UserRoundUpConfig, UserStreak, UserTOTP
+from app.models import (
+    AutoWithdrawConfig,
+    Referral,
+    User,
+    UserRoundUpConfig,
+    UserStreak,
+    UserTOTP,
+)
 from app.rate_limit import client_ip, rate_limit
 from app.schemas import (
+    DeleteAccountRequest,
     ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
@@ -103,6 +112,36 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
     return user
+
+
+@router.delete("/me")
+def delete_account(body: DeleteAccountRequest, user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)):
+    """Delete the account and everything stored about it.
+
+    App Store guideline 5.1.1(v): an app that lets people create an account
+    must let them delete it from inside the app. This is a deletion, not a
+    deactivation - `is_active=False` would keep every transaction, reward and
+    risk score while telling the user they were gone.
+
+    The password is asked for again because a session token alone is not
+    proof the person holding the phone is the account holder.
+
+    Referral rows are the one thing the ORM cascade does not reach: they point
+    at two users, and belong to neither. They are removed for both sides. Sats
+    already paid to the *other* party stay with them - that payment happened.
+    """
+    rate_limit(f"delete-account:{user.id}", 5)
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(400, "That password isn't right.")
+
+    db.query(Referral).filter(
+        (Referral.referrer_id == user.id) | (Referral.referee_id == user.id)
+    ).delete(synchronize_session=False)
+    db.delete(user)
+    db.commit()
+    anomaly_detector.invalidate(user.id)
+    return {"message": "Your account and its data have been deleted."}
 
 
 @router.post("/forgot-password")

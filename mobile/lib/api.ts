@@ -101,6 +101,9 @@ export const authAPI = {
     post<{ message: string; reset_token?: string }>("/api/auth/forgot-password", { email }),
   resetPassword: (b: { token: string; new_password: string }) =>
     post<{ message: string }>("/api/auth/reset-password", b),
+  /** Permanent. The password is re-checked server-side. */
+  deleteAccount: (password: string) =>
+    api.delete<{ message: string }>("/api/auth/me", { data: { password } }).then((r) => r.data),
 };
 
 export const securityAPI = {
