@@ -211,6 +211,14 @@ class SurveySummary(BaseModel):
     # exactly this reason -- q1/q2/q3 over all of `included`, q4-q7 over
     # only `used_app_count` of them.
     used_app_count: int
+    # Included responses stored before has_used_app existed. They count
+    # towards Q1-Q3; their Q4-Q7 answers are reported only in
+    # `legacy_app_items`, apart from the grounded ones.
+    legacy_count: int
     by_source: dict[str, int]
+    # Per item: n, median, q1, q3 (interquartile range), mean, distribution.
+    likert: dict[str, dict]
+    # The means alone, for anything already reading this field.
     likert_means: dict[str, float | None]
+    legacy_app_items: dict[str, dict]
     q8_distribution: dict[str, int]

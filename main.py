@@ -5,7 +5,10 @@ mounting. Every endpoint lives in `app/routers/`.
 """
 import asyncio
 import logging
+import re
+import uuid
 from contextlib import asynccontextmanager, suppress
+from contextvars import ContextVar
 from pathlib import Path
 
 from fastapi import FastAPI, Request, status
@@ -24,10 +27,25 @@ from app.rate_limit import client_ip
 from app.routers import ALL_ROUTERS
 from app.services import evaluate_price_alerts
 
+# The id of the request being handled, for every log line written while
+# handling it. Without it, interleaved lines from concurrent requests on the
+# Render log stream cannot be told apart.
+_request_id: ContextVar[str] = ContextVar("request_id", default="-")
+REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9-]{1,64}$")
+
+
+class _RequestIdFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = _request_id.get()
+        return True
+
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    format="%(asctime)s %(levelname)-8s %(name)s [%(request_id)s] %(message)s",
 )
+for _handler in logging.getLogger().handlers:
+    _handler.addFilter(_RequestIdFilter())
 log = logging.getLogger("bitback")
 
 SEED_CATEGORIES = [
@@ -133,6 +151,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def request_id(request: Request, call_next):
+    """Tag the request with an id, log it, and return it as X-Request-ID.
+
+    A caller-supplied id is kept if it looks like one, so a trace can span the
+    client and the server; anything else is replaced, because the value is
+    written into logs and a header.
+    """
+    supplied = request.headers.get("x-request-id", "")
+    rid = supplied if REQUEST_ID_PATTERN.match(supplied) else uuid.uuid4().hex[:12]
+    request.state.request_id = rid
+    token = _request_id.set(rid)
+    try:
+        response = await call_next(request)
+    finally:
+        _request_id.reset(token)
+    response.headers["X-Request-ID"] = rid
+    return response
+
+
 for router in ALL_ROUTERS:
     app.include_router(router)
 
@@ -161,11 +199,17 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    """Log the traceback, return a message that leaks nothing about it."""
-    log.exception("unhandled error on %s %s", request.method, request.url.path)
+    """Log the traceback, return a message that leaks nothing about it.
+
+    The reference is the request id: it is all a user needs to quote for the
+    matching traceback to be found in the logs, and it reveals nothing.
+    """
+    rid = getattr(request.state, "request_id", "-")
+    log.exception("unhandled error on %s %s (request %s)", request.method, request.url.path, rid)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Something went wrong on our side. Try again."},
+        content={"detail": "Something went wrong on our side. Try again.", "reference": rid},
+        headers={"X-Request-ID": rid},
     )
 
 

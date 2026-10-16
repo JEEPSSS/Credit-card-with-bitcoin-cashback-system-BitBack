@@ -153,3 +153,31 @@ def test_a_spoofed_header_cannot_dodge_the_signup_limit(client, monkeypatch):
         for i in range(8)
     ]
     assert 429 in codes
+
+
+# -------------------------------------------------------------- request ids
+def test_every_response_carries_a_request_id(client):
+    assert len(client.get("/api/health").headers["X-Request-ID"]) == 12
+
+
+def test_a_well_formed_caller_id_is_kept_and_anything_else_replaced(client):
+    kept = client.get("/api/health", headers={"X-Request-ID": "app-7f3a9c"})
+    assert kept.headers["X-Request-ID"] == "app-7f3a9c"
+    hostile = client.get("/api/health", headers={"X-Request-ID": "x\\nFAKE LOG LINE"})
+    assert hostile.headers["X-Request-ID"] != "x\\nFAKE LOG LINE"
+
+
+def test_a_500_gives_the_user_a_reference_and_nothing_else(client, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.routers import market
+
+    def broken():
+        raise RuntimeError("secret internal detail")
+
+    monkeypatch.setattr(market, "get_btc_price", broken)
+    with TestClient(main.app, raise_server_exceptions=False) as c:
+        r = c.get("/api/btc/price")
+    assert r.status_code == 500
+    assert "secret" not in r.text
+    assert r.json()["reference"] == r.headers["X-Request-ID"]

@@ -86,25 +86,75 @@ def submit_response(body: SurveyResponseCreate, request: Request, db: Session = 
     return SurveyResponseOut(id=row.id, screened_out=row.screened_out)
 
 
+def cohort(r: SurveyResponse) -> str:
+    """Which analysis group a response belongs to.
+
+    `legacy` is a response stored before the has_used_app question existed
+    (migration c4e2a1f6b8d3). Back then Q4-Q7 were required of everyone, so
+    those answers may come from people who never saw the screens they ask
+    about. They are kept, and reported separately - never pooled with
+    `used_app` and never deleted.
+    """
+    if r.screened_out:
+        return "screened_out"
+    if r.has_used_app is None:
+        return "legacy"
+    return "used_app" if r.has_used_app else "concept_only"
+
+
+def likert_stats(values: list[int]) -> dict:
+    """Median and interquartile range lead; the mean is kept for comparison.
+
+    Likert responses are ordinal: the distance from "disagree" to "neutral"
+    is not known to equal the distance from "neutral" to "agree", so a mean
+    assumes an interval scale the instrument does not have. The full
+    distribution is included so a chart never has to be reverse-engineered
+    from summary numbers.
+    """
+    if not values:
+        return {"n": 0, "median": None, "q1": None, "q3": None, "mean": None,
+                "distribution": {str(k): 0 for k in range(1, 6)}}
+    if len(values) == 1:
+        q1 = q3 = float(values[0])
+    else:
+        q1, _, q3 = statistics.quantiles(values, n=4, method="inclusive")
+    return {
+        "n": len(values),
+        "median": float(statistics.median(values)),
+        "q1": round(q1, 2), "q3": round(q3, 2),
+        "mean": round(statistics.mean(values), 2),
+        "distribution": {str(k): values.count(k) for k in range(1, 6)},
+    }
+
+
 @router.get("/summary", response_model=SurveySummary)
 def summary(db: Session = Depends(get_db)):
     """Aggregate only — never returns Q9/Q10 free text, which respondents did
-    not consent to having published live."""
+    not consent to having published live.
+
+    Concept items (Q1-Q3) are analysed over every included respondent,
+    legacy rows among them: that question was asked of everyone, before and
+    after the migration. App items (Q4-Q7) are analysed over `used_app`
+    respondents only. They used to include legacy rows' answers while
+    `used_app_count` excluded those rows, so the reported means and the
+    reported n described different groups of people.
+    """
     rows = db.query(SurveyResponse).all()
-    included = [r for r in rows if not r.screened_out]
-    used_app_count = sum(1 for r in included if r.has_used_app)
+    groups: dict[str, list[SurveyResponse]] = {
+        "screened_out": [], "legacy": [], "used_app": [], "concept_only": []}
+    for r in rows:
+        groups[cohort(r)].append(r)
+    included = groups["legacy"] + groups["used_app"] + groups["concept_only"]
 
     by_source: dict[str, int] = {}
     for r in rows:
         by_source[r.source] = by_source.get(r.source, 0) + 1
 
-    # q1-q3's denominator is every included respondent; q4-q7's is only
-    # used_app_count of them -- getattr(...) is None already excludes the
-    # nulled-out non-users, so this falls out without a separate branch.
-    likert_means: dict[str, float | None] = {}
-    for f in LIKERT_FIELDS:
-        values = [getattr(r, f) for r in included if getattr(r, f) is not None]
-        likert_means[f] = round(statistics.mean(values), 2) if values else None
+    def values(group: list[SurveyResponse], field: str) -> list[int]:
+        return [getattr(r, field) for r in group if getattr(r, field) is not None]
+
+    likert = {f: likert_stats(values(included, f)) for f in CONCEPT_LIKERT_FIELDS}
+    likert |= {f: likert_stats(values(groups["used_app"], f)) for f in APP_EXPERIENCE_FIELDS}
 
     q8_distribution = {opt: 0 for opt in Q8_OPTIONS}
     for r in included:
@@ -113,10 +163,14 @@ def summary(db: Session = Depends(get_db)):
 
     return SurveySummary(
         total_responses=len(rows),
-        screened_out=len(rows) - len(included),
+        screened_out=len(groups["screened_out"]),
         included=len(included),
-        used_app_count=used_app_count,
+        used_app_count=len(groups["used_app"]),
+        legacy_count=len(groups["legacy"]),
         by_source=by_source,
-        likert_means=likert_means,
+        likert=likert,
+        likert_means={f: stats["mean"] for f, stats in likert.items()},
+        legacy_app_items={f: likert_stats(values(groups["legacy"], f))
+                          for f in APP_EXPERIENCE_FIELDS},
         q8_distribution=q8_distribution,
     )

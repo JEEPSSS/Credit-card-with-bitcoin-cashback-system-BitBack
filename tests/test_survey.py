@@ -120,3 +120,57 @@ def test_repeated_submissions_are_rate_limited(client):
     for _ in range(SUBMISSIONS_PER_ADDRESS_PER_HOUR):
         assert client.post("/api/survey/responses", json=full_payload()).status_code == 200
     assert client.post("/api/survey/responses", json=full_payload()).status_code == 429
+
+
+# ------------------------------------------------------- analysis cohorts
+def _legacy_row(db, **answers):
+    """A response as stored before the has_used_app migration."""
+    from app.models import SurveyResponse
+    db.add(SurveyResponse(source="web", screened_out=False, has_used_app=None,
+                          q1=2, q2=2, q3=2, q4=1, q5=1, q6=1, q7=1, q8="less", **answers))
+    db.commit()
+
+
+def test_pre_migration_answers_are_not_pooled_with_grounded_ones(client, db):
+    """Regression: legacy rows' Q4-Q7 entered the means while used_app_count
+    excluded them, so n and mean described different groups."""
+    client.post("/api/survey/responses", json=full_payload(q4=5))
+    _legacy_row(db)
+
+    s = client.get("/api/survey/summary").json()
+    assert s["legacy_count"] == 1
+    assert s["used_app_count"] == 1
+    assert s["likert"]["q4"]["n"] == 1
+    assert s["likert"]["q4"]["median"] == 5.0
+    assert s["legacy_app_items"]["q4"]["n"] == 1
+    assert s["legacy_app_items"]["q4"]["median"] == 1.0
+    # Concept items were asked of everyone, so legacy rows count there.
+    assert s["likert"]["q1"]["n"] == 2
+
+
+def test_likert_items_report_median_and_iqr(client):
+    for q1 in (1, 2, 4, 5, 5):
+        client.post("/api/survey/responses", json=full_payload(q1=q1))
+    stats = client.get("/api/survey/summary").json()["likert"]["q1"]
+    assert stats["n"] == 5
+    assert stats["median"] == 4.0
+    assert (stats["q1"], stats["q3"]) == (2.0, 5.0)
+    assert stats["distribution"] == {"1": 1, "2": 1, "3": 0, "4": 1, "5": 2}
+
+
+def test_the_export_labels_every_row_with_its_cohort(client, db, monkeypatch, tmp_path):
+    import csv
+
+    from scripts import export_survey
+
+    client.post("/api/survey/responses", json=full_payload())
+    client.post("/api/survey/responses", json=full_payload(screen_active_trader=True))
+    _legacy_row(db)
+
+    monkeypatch.setattr(export_survey, "SessionLocal", lambda: db.__class__(bind=db.get_bind()))
+    out = tmp_path / "survey.csv"
+    assert export_survey.export(str(out)) == 3
+
+    with open(out, newline="", encoding="utf-8") as f:
+        cohorts = sorted(row["cohort"] for row in csv.DictReader(f))
+    assert cohorts == ["legacy", "screened_out", "used_app"]

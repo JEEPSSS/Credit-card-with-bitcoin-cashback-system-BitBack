@@ -29,6 +29,7 @@ ignore = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
+markers = ["slow: builds a long history; still part of the default run"]
 filterwarnings = [
     "error::DeprecationWarning:app.*",
     "error::DeprecationWarning:main",

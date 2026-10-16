@@ -23,7 +23,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint
-        run: ruff check app main.py seed_demo.py tests evaluation migrations/env.py
+        run: ruff check app main.py seed_demo.py tests evaluation scripts migrations/env.py
 
       - name: Tests
         run: pytest
