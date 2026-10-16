@@ -32,8 +32,8 @@ Four techniques were used:
 
 | | Before | After |
 |---|---|---|
-| Backend tests (SQLite) | 104 passed | 150 passed, 2 skipped (Postgres-only race tests) |
-| Backend tests (Postgres 16) | not run - 1 failure when first run | 152 passed |
+| Backend tests (SQLite) | 104 passed | 159 passed, 2 skipped (Postgres-only race tests) |
+| Backend tests (Postgres 16) | not run - 1 failure when first run | 161 passed |
 | CI jobs | SQLite tests, mobile | + Postgres: `alembic upgrade head`, `alembic check`, full suite |
 | `pip-audit` (requirements.txt) | 33 distinct advisories in 6 packages (reported as 55 findings) | 0 |
 | `npm audit --omit=dev` (mobile) | 49 (1 critical, 32 high) | 43 (0 critical, 25 high), all in Expo build tooling - see section 4 |
@@ -240,7 +240,46 @@ range and the full distribution; the mean is kept for comparison.
 | F7 | The alert sweep first ran one interval after boot; a free instance is woken by someone opening the app | Sweep at startup, then on the interval |
 | F8 | `/api/health` said "ok" with the database down | Runs `SELECT 1`; 503 if it fails (use as Render's health check) |
 | F28 | The tax report's default year used the server's local date | UTC date, like every other timestamp |
-| F29 | Concurrent requests' log lines could not be told apart | `X-Request-ID` on every response and log line; a 500 returns it as `reference` and nothing else |
+| F29 | Concurrent requests' log lines could not be told apart | `X-Request-ID` on every response and log line |
+
+**F31 - Errors came back in four different shapes (Low).** `detail` was a
+string, an object (the 409), or a list (422), and a 500 added `reference`; a
+client had to know which to expect. *Fix:* every error response is
+`{"message", "request_id", "detail"}` - `message` is always one readable
+sentence, `request_id` matches the `X-Request-ID` header and the log, and
+`detail` is unchanged so existing clients keep working. The mobile client now
+reads `message` first. *Test:* `test_every_error_has_the_same_envelope`
+covers 401, 404 (raised and unknown route), 405, 409 and 422.
+
+### 2.7 Indexes, measured
+
+**F30 - Deleting a long-standing account took 26 seconds (High).**
+Postgres does not index foreign keys automatically, and
+`reward_events.transaction_id` had none. Deleting a purchase makes Postgres
+check that no reward still references it, and without an index each check
+scans the whole table. *Found by* seeding Postgres 16 with 40k purchases,
+100k price alerts and 40k notifications (the heaviest user holding 20,000
+purchases) and measuring with `EXPLAIN ANALYZE`. Deleting that user's
+purchases spent 25.9 s in this one check - longer than the mobile app's 12 s
+request timeout, so the account could not be deleted from the app. The same
+seeding showed three hot queries reading far more rows than they return.
+
+| Query | Before | After | Index (migration `d7a3e9b1c5f2`) |
+|---|---|---|---|
+| Delete 20,000 purchases (foreign-key checks) | 26,394 ms | 323 ms | `reward_events (transaction_id)` |
+| Alert sweep, every 60 s - 200 pending of 100,000 | 6.1 ms, full scan | 0.61 ms | partial: `price_alerts (user_id) WHERE NOT is_triggered` |
+| Unread count - 40 unread of 20,000 | 2.4 ms | 0.05 ms, index-only | partial: `notifications (user_id) WHERE NOT is_read` |
+| Flagged purchases - 400 of 20,000 | 2.3 ms | 0.67 ms | partial: `transaction_risk_scores (user_id) WHERE is_anomaly` |
+| Reward for one purchase | 2.9 ms, full scan | 0.03 ms | `reward_events (transaction_id)` |
+
+The partial indexes cover only the rows those queries want, so they stay
+small as history accumulates; the sweep in particular now costs what is
+pending, not what has ever existed. *Test:*
+`test_every_foreign_key_is_the_leading_column_of_an_index` reads the schema
+and fails if any foreign key lacks an index that starts with it - with the
+new index removed it reports `reward_events.transaction_id` by name. The
+migration was applied, downgraded and re-applied on SQLite and Postgres, and
+`alembic check` confirms the models declare the same indexes.
 
 ## 3. Measurement: queries per request
 
@@ -288,6 +327,7 @@ pip install -r requirements.txt
 pytest                                    # SQLite
 TEST_DATABASE_URL=postgresql://... pytest # Postgres; includes the race tests
 alembic upgrade head && alembic check     # schema and models agree
+# Index measurements (F30): see scripts/index_benchmark/README.md
 pip-audit -r requirements.txt
 cd mobile && npm ci && npm run typecheck && npm test && npm audit --omit=dev
 python -m evaluation.run                  # model evaluation, unchanged by this pass

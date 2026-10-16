@@ -86,7 +86,11 @@ class RewardEvent(Base):
     __tablename__ = "reward_events"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=False)
+    # Indexed because Postgres does not index foreign keys itself. Without it,
+    # deleting a transaction checks this table for references by scanning all
+    # of it: deleting an account with 20,000 purchases took 26 s (see
+    # docs/BACKEND_HARDENING.md, F30).
+    transaction_id = Column(Integer, ForeignKey("transactions.id"), index=True, nullable=False)
     btc_amount = Column(BigInteger, nullable=False)          # satoshis
     # The BTC price at the moment of earning. Required to value a reward at fair
     # market value on receipt rather than at today's price.
@@ -223,6 +227,14 @@ class PriceAlert(Base):
     triggered_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
+    # Partial: only pending alerts. The sweep reads every pending alert once a
+    # minute, and triggered ones accumulate forever, so a full scan grows with
+    # history while this index grows only with what is actually pending.
+    __table_args__ = (
+        Index("ix_price_alert_pending", "user_id",
+              postgresql_where=is_triggered.is_(False), sqlite_where=is_triggered.is_(False)),
+    )
+
 
 class Notification(Base):
     __tablename__ = "notifications"
@@ -235,7 +247,14 @@ class Notification(Base):
     is_read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utcnow, index=True, nullable=False)
 
-    __table_args__ = (Index("ix_notification_user_created", "user_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_notification_user_created", "user_id", "created_at"),
+        # The unread badge count runs on every notifications load. One
+        # notification is written per purchase and nearly all are read, so
+        # indexing only the unread ones keeps the count off the user's history.
+        Index("ix_notification_unread", "user_id",
+              postgresql_where=is_read.is_(False), sqlite_where=is_read.is_(False)),
+    )
 
 
 class UserTOTP(Base):
@@ -258,6 +277,12 @@ class TransactionRiskScore(Base):
     features_used = Column(Text, default="{}", nullable=False)
     model_version = Column(String(40), default="iforest-v1", nullable=False)
     created_at = Column(DateTime, default=utcnow, nullable=False)
+
+    # The fraud screen lists only flagged purchases, about 2% of the total.
+    __table_args__ = (
+        Index("ix_risk_flagged", "user_id",
+              postgresql_where=is_anomaly.is_(True), sqlite_where=is_anomaly.is_(True)),
+    )
 
 
 class SurveyResponse(Base):

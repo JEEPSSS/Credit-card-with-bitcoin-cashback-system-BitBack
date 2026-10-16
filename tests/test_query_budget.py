@@ -55,3 +55,26 @@ def test_query_count_does_not_grow_with_history(client, headers, engine):
     grew = {p: (small[p], large[p]) for p in READ_ENDPOINTS if large[p] > small[p]}
     assert grew == {}, f"queries grew with history (10 -> 60 purchases): {grew}"
     assert max(large.values()) <= 8
+
+
+def test_every_foreign_key_is_the_leading_column_of_an_index(engine):
+    """Postgres does not index foreign keys on its own.
+
+    An unindexed one makes every delete of the parent row scan the child
+    table. reward_events.transaction_id was one: deleting an account with
+    20,000 purchases spent 26 s in those checks, longer than the app waits
+    for a response. This fails the day another one is added.
+    """
+    from sqlalchemy import inspect
+
+    inspector = inspect(engine)
+    missing = []
+    for table in inspector.get_table_names():
+        leading = {tuple(inspector.get_pk_constraint(table)["constrained_columns"][:1])}
+        leading |= {tuple(ix["column_names"][:1]) for ix in inspector.get_indexes(table)}
+        leading |= {tuple(uc["column_names"][:1])
+                    for uc in inspector.get_unique_constraints(table)}
+        for fk in inspector.get_foreign_keys(table):
+            if tuple(fk["constrained_columns"][:1]) not in leading:
+                missing.append(f"{table}.{fk['constrained_columns'][0]}")
+    assert missing == [], f"foreign keys without an index: {missing}"

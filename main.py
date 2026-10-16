@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.btc_service import get_btc_price
 from app.clock import utcnow
@@ -182,35 +183,67 @@ if _SURVEY_DIR.exists():
     app.mount("/survey", StaticFiles(directory=_SURVEY_DIR, html=True), name="survey")
 
 
+# ------------------------------------------------------------------ errors
+# Every error response has the same shape:
+#
+#   {"message": str, "request_id": str, "detail": ...}
+#
+# `message` is always one human-readable sentence, so a client never has to
+# know which of the three historical `detail` forms (a string, the 409's
+# object, the 422's list) it received. `request_id` matches the X-Request-ID
+# header and the server log. `detail` is kept exactly as before so that
+# clients written against it keep working.
+GENERIC_500 = "Something went wrong on our side. Try again."
+
+
+def _error(request: Request, status_code: int, message: str, detail,
+           headers: dict | None = None) -> JSONResponse:
+    rid = getattr(request.state, "request_id", "-")
+    return JSONResponse(
+        status_code=status_code,
+        content={"message": message, "request_id": rid, "detail": detail},
+        headers={**(headers or {}), "X-Request-ID": rid},
+    )
+
+
+def _message_from(detail) -> str:
+    if isinstance(detail, str):
+        return detail
+    if isinstance(detail, dict) and isinstance(detail.get("message"), str):
+        return detail["message"]
+    return "That request couldn't be completed."
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error_handler(request: Request, exc: StarletteHTTPException):
+    """Every deliberate error - raised HTTPExceptions, unknown routes, 405s."""
+    return _error(request, exc.status_code, _message_from(exc.detail), exc.detail,
+                  headers=getattr(exc, "headers", None))
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError):
     """422 with each problem's location and message, without the rejected value.
 
     FastAPI's default echoes the rejected input back. A non-finite float
     cannot be encoded as JSON, so rejecting `NaN` crashed this handler and the
-    client got a 500 for what was a validation failure. The mobile client only
-    reads `msg`, so nothing it relies on is lost.
+    client got a 500 for what was a validation failure.
     """
     errors = [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
               for e in exc.errors()]
-    return JSONResponse(status_code=422,
-                        content={"detail": errors})
+    return _error(request, 422, "; ".join(e["msg"] for e in errors), errors)
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """Log the traceback, return a message that leaks nothing about it.
 
-    The reference is the request id: it is all a user needs to quote for the
-    matching traceback to be found in the logs, and it reveals nothing.
+    The request id is all a user needs to quote for the matching traceback to
+    be found in the logs, and it reveals nothing.
     """
     rid = getattr(request.state, "request_id", "-")
     log.exception("unhandled error on %s %s (request %s)", request.method, request.url.path, rid)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Something went wrong on our side. Try again.", "reference": rid},
-        headers={"X-Request-ID": rid},
-    )
+    return _error(request, status.HTTP_500_INTERNAL_SERVER_ERROR, GENERIC_500, GENERIC_500)
 
 
 @app.get("/api/health", tags=["meta"])

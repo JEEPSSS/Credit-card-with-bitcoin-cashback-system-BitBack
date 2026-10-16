@@ -180,4 +180,32 @@ def test_a_500_gives_the_user_a_reference_and_nothing_else(client, monkeypatch):
         r = c.get("/api/btc/price")
     assert r.status_code == 500
     assert "secret" not in r.text
-    assert r.json()["reference"] == r.headers["X-Request-ID"]
+    assert r.json()["request_id"] == r.headers["X-Request-ID"]
+
+
+# ------------------------------------------------------------ error envelope
+@pytest.mark.parametrize("make_error,status", [
+    (lambda c, h: c.post("/api/auth/login", json={"email": "x@test.io", "password": "no"}), 401),
+    (lambda c, h: c.get("/api/auth/me"), 401),
+    (lambda c, h: c.delete("/api/goals/999", headers=h), 404),
+    (lambda c, h: c.get("/api/no-such-route"), 404),
+    (lambda c, h: c.put("/api/btc/price"), 405),
+    (lambda c, h: c.post("/api/transactions", headers=h, json={"amount_fiat": -1}), 422),
+    (lambda c, h: [spend(c, h, key="k1"), spend(c, h, key="k1")][1], 409),
+])
+def test_every_error_has_the_same_envelope(client, headers, make_error, status):
+    """One shape for every failure: a sentence, the request id, and the
+    original `detail` kept for clients already written against it."""
+    r = make_error(client, headers)
+    body = r.json()
+    assert r.status_code == status
+    assert isinstance(body["message"], str) and body["message"]
+    assert body["request_id"] == r.headers["X-Request-ID"]
+    assert "detail" in body
+
+
+def test_the_409_message_is_the_human_sentence_not_the_object(client, headers):
+    spend(client, headers, key="dup")
+    body = spend(client, headers, key="dup").json()
+    assert body["message"] == "That transaction was already recorded."
+    assert body["detail"]["transaction_id"]

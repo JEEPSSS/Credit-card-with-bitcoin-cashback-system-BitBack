@@ -59,9 +59,14 @@ api.interceptors.response.use(
       onUnauthorized?.();
     }
     // Surface the backend's own message rather than "Request failed with status 400".
-    const detail = (error.response?.data as { detail?: unknown })?.detail;
+    // Every error from the API carries `message`; the `detail` branches below
+    // remain for a server running an older version.
+    const data = error.response?.data as { message?: unknown; detail?: unknown } | undefined;
+    const detail = data?.detail;
     let friendly: string;
-    if (typeof detail === "string") {
+    if (typeof data?.message === "string" && data.message) {
+      friendly = data.message;
+    } else if (typeof detail === "string") {
       friendly = detail;
     } else if (Array.isArray(detail)) {
       friendly = detail.map((d) => (d as { msg?: string }).msg ?? JSON.stringify(d)).join("; ");
