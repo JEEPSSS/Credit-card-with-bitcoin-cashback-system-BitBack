@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.anomaly_detector import score_transaction
 from app.auth import get_current_user
-from app.btc_service import get_btc_price
+from app.btc_service import price_for_reward
 from app.clock import utcnow
 from app.database import get_db
 from app.gamification import check_badges, update_streak
@@ -74,7 +74,7 @@ def create_transaction(
             })
 
     cat = category_or_404(db, body.category)
-    price = get_btc_price()["price"]
+    price = price_for_reward()
     earned_before = total_sats_earned(db, user.id)
     level = get_level(earned_before)
     boost = active_boost(db, user.id)
@@ -160,7 +160,7 @@ def list_transactions(
 def preview_reward(body: RewardPreviewRequest, user: User = Depends(get_current_user),
                    db: Session = Depends(get_db)):
     cat = category_or_404(db, body.category)
-    price = get_btc_price()["price"]
+    price = price_for_reward()
     level = get_level(total_sats_earned(db, user.id))
     boost = active_boost(db, user.id)
     mult = boost.multiplier if boost and boost.category == body.category else 1.0

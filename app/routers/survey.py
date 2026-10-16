@@ -31,14 +31,17 @@ CONCEPT_LIKERT_FIELDS = ["q1", "q2", "q3"]
 # actually seen -- see the has_used_app docstring on the model.
 APP_EXPERIENCE_FIELDS = ["q4", "q5", "q6", "q7"]
 LIKERT_FIELDS = CONCEPT_LIKERT_FIELDS + APP_EXPERIENCE_FIELDS
+SUBMISSIONS_PER_ADDRESS_PER_HOUR = 60
 Q8_OPTIONS = ["much_less", "less", "equally", "more", "much_more"]
 
 
 @router.post("/responses", response_model=SurveyResponseOut)
 def submit_response(body: SurveyResponseCreate, request: Request, db: Session = Depends(get_db)):
-    # A generous but real ceiling: this stops a scripted flood, not a genuine
-    # respondent, who submits once.
-    rate_limit(f"survey:{client_ip(request)}", 5, window=3600)
+    # A ceiling that stops a scripted flood, not a genuine respondent, who
+    # submits once. It is per address, and a campus or office network puts
+    # hundreds of people behind one NAT address - the original 5/hour would
+    # have turned away the sixth respondent in a lecture theatre.
+    rate_limit(f"survey:{client_ip(request)}", SUBMISSIONS_PER_ADDRESS_PER_HOUR, window=3600)
 
     used_app = bool(body.has_used_app)
     if not body.screen_active_trader:

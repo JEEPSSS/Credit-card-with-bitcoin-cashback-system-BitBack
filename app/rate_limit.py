@@ -14,6 +14,8 @@ from collections import defaultdict
 
 from fastapi import HTTPException, Request, status
 
+from app.config import settings
+
 _hits: dict[str, list[float]] = defaultdict(list)
 _last_sweep = 0.0
 SWEEP_INTERVAL = 300
@@ -42,15 +44,25 @@ def rate_limit(key: str, limit: int, window: int = 60) -> None:
 
 
 def client_ip(request: Request) -> str:
-    """Client address, honouring one layer of reverse proxy.
+    """The caller's address, from the source `settings.client_ip_source` names.
 
     Behind a proxy `request.client.host` is the proxy, which would rate limit
-    every user as one caller. X-Forwarded-For is client-controlled and must not
-    be trusted without a proxy in front that overwrites it.
+    every user as one caller. The forwarding headers fix that, but differ in
+    how far they can be trusted: X-Forwarded-For is appended to, not reset, by
+    Render's edge, so a client can put any value it likes in the first slot and
+    get a fresh bucket per request. CF-Connecting-IP is overwritten by
+    Cloudflare. Which one is correct depends on the deployment, so it is
+    configuration rather than a guess baked in here.
     """
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    source = settings.client_ip_source
+    if source == "cf-connecting-ip":
+        value = request.headers.get("cf-connecting-ip")
+        if value:
+            return value.strip()
+    elif source == "x-forwarded-for":
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
 

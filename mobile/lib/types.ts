@@ -37,6 +37,10 @@ export type BtcPrice = {
   change_24h: number;
   currency: string;
   sats_per_dollar: number;
+  /** True when the price is a fallback or older than the server's limit. */
+  stale: boolean;
+  /** Seconds since the last live fetch; null if there has never been one. */
+  age_seconds: number | null;
 };
 
 export type Category = {

@@ -87,6 +87,10 @@ def client(engine, SessionLocal, monkeypatch):
     # shared across every test in the run.
     rate_limit.reset()
     anomaly_detector.invalidate()
+    # The alert sweep runs in a background thread from the lifespan. Against a
+    # single shared in-memory connection that races the test's own queries, so
+    # tests call `main._sweep_alerts` directly when they need it.
+    monkeypatch.setattr(main, "_sweep_alerts", lambda: 0)
 
     with TestClient(main.app) as c:
         yield c

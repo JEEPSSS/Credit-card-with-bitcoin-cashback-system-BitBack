@@ -1,6 +1,7 @@
 """Chapter 3.6's survey endpoint: anonymous submission, the active-trader
 screen, and the aggregate summary."""
 from app import rate_limit
+from app.routers.survey import SUBMISSIONS_PER_ADDRESS_PER_HOUR
 
 
 def full_payload(source="web", screen_active_trader=False, has_used_app=True, **overrides):
@@ -116,6 +117,6 @@ def test_the_summary_never_exposes_free_text(client):
 
 def test_repeated_submissions_are_rate_limited(client):
     rate_limit.reset()
-    for _ in range(5):
+    for _ in range(SUBMISSIONS_PER_ADDRESS_PER_HOUR):
         assert client.post("/api/survey/responses", json=full_payload()).status_code == 200
     assert client.post("/api/survey/responses", json=full_payload()).status_code == 429

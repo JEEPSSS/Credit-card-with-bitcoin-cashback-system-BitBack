@@ -19,6 +19,10 @@ def btc_price():
         "change_24h": data["change_24h"],
         "currency": "USD",
         "sats_per_dollar": int(SATS_PER_BTC / price) if price else 0,
+        # So the client can say "price from 12 minutes ago" instead of
+        # presenting an old or fallback number as live.
+        "stale": data["stale"],
+        "age_seconds": data["age_seconds"],
     }
 
 
