@@ -38,10 +38,17 @@ def add_rewards(db, user_id, weekly_sats: list[int], per_week: int = 4):
             continue
         each = total // per_week
         for j in range(per_week):
+            # A real parent row: a placeholder id passed only while SQLite
+            # ignored foreign keys.
+            at = start + timedelta(days=i * 7 + j)
+            tx = Transaction(user_id=user_id, amount_fiat=10.0, category="dining",
+                             merchant="Cafe", btc_price_at_time=50_000.0,
+                             sats_earned=each, created_at=at)
+            db.add(tx)
+            db.flush()
             db.add(RewardEvent(
-                user_id=user_id, transaction_id=0, btc_amount=each, btc_price=50_000.0,
-                cashback_rate=0.02, category="dining",
-                created_at=start + timedelta(days=i * 7 + j),
+                user_id=user_id, transaction_id=tx.id, btc_amount=each, btc_price=50_000.0,
+                cashback_rate=0.02, category="dining", created_at=at,
             ))
     db.commit()
 

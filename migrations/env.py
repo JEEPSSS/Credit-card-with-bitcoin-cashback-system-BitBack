@@ -8,12 +8,12 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.config import settings
-from app.database import Base
 # Importing the models registers every table on Base.metadata, which is what
 # autogenerate diffs against. Without this import it would see an empty schema
 # and generate a migration that drops everything.
 from app import models  # noqa: F401
+from app.config import settings
+from app.database import Base
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

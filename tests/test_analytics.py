@@ -2,7 +2,7 @@
 import pytest
 
 from app import btc_service
-from tests.conftest import TEST_BTC_PRICE
+from tests.conftest import TEST_BTC_PRICE, auth_header
 from tests.test_transactions import spend
 
 
@@ -86,3 +86,20 @@ def test_a_solo_user_is_not_ranked_against_themselves(client, headers):
     """With no peers the percentile is neutral, not zero."""
     spend(client, headers, amount=100.0)
     assert client.get("/api/analytics/recap", headers=headers).json()["percentile"] == 50
+
+
+def test_recap_ranks_a_user_against_their_peers(client, headers):
+    """Regression: recap returned 500 on Postgres for every user with data.
+
+    Postgres sums a BIGINT column to NUMERIC, which arrives as Decimal, and
+    Decimal * float raises. SQLite sums to int, so only the Postgres CI job
+    reproduces the original failure; this test pins the peer path as well.
+    """
+    small = auth_header(client, email="small@test.io")
+    spend(client, small, amount=10.0)
+    spend(client, headers, amount=500.0)
+
+    body = client.get("/api/analytics/recap", headers=headers).json()
+    assert body["percentile"] == 100
+    assert isinstance(body["total_sats"], int)
+    assert body["total_usd"] > 0

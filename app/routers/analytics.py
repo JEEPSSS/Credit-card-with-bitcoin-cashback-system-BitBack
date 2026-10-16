@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import date, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.btc_service import sats_to_usd
-from app.clock import days_ago
+from app.clock import days_ago, utctoday
 from app.database import get_db
 from app.models import CategoryCashback, RewardEvent, Transaction, User, UserStreak
 from app.reward_engine import SATS_PER_BTC
@@ -113,6 +113,10 @@ def recap(user: User = Depends(get_current_user), db: Session = Depends(get_db))
 
     if not count:
         return {"has_data": False, "message": "Come back after a month of spending."}
+    # Postgres returns SUM over a BIGINT as NUMERIC, which psycopg2 hands back
+    # as Decimal; SQLite returns int. Decimal * float raises, so this endpoint
+    # returned 500 on the production database while passing every SQLite test.
+    total_sats = int(total_sats)
 
     top_category, top_sats = db.query(
         Transaction.category, func.sum(Transaction.sats_earned)
@@ -129,7 +133,7 @@ def recap(user: User = Depends(get_current_user), db: Session = Depends(get_db))
     totals = db.query(func.sum(Transaction.sats_earned)).filter(
         Transaction.created_at >= since, Transaction.user_id != user.id
     ).group_by(Transaction.user_id).all()
-    peers = [t[0] or 0 for t in totals]
+    peers = [int(t[0] or 0) for t in totals]
     percentile = (int(round(sum(1 for v in peers if v < total_sats) / len(peers) * 100))
                   if peers else 50)
 
@@ -137,7 +141,7 @@ def recap(user: User = Depends(get_current_user), db: Session = Depends(get_db))
     return {
         "has_data": True,
         "period": f"Last {RECAP_DAYS} days",
-        "total_sats": int(total_sats),
+        "total_sats": total_sats,
         "total_usd": usd,
         "total_spent": round(total_spent, 2),
         "transaction_count": count,
@@ -147,14 +151,14 @@ def recap(user: User = Depends(get_current_user), db: Session = Depends(get_db))
         "percentile": percentile,
         "fun_facts": [
             f"That's {usd / FLAT_WHITE_USD:.1f} flat whites paid for by your own spending.",
-            f"You averaged {int(total_sats) // max(1, count):,} sats a transaction.",
-            f"At this rate you'd stack {int(total_sats) * 12:,} sats a year.",
+            f"You averaged {total_sats // max(1, count):,} sats a transaction.",
+            f"At this rate you'd stack {total_sats * 12:,} sats a year.",
         ],
     }
 
 
 @router.get("/tax/report")
-def tax_report(year: int = Query(default_factory=lambda: date.today().year, ge=2009, le=2100),
+def tax_report(year: int = Query(default_factory=lambda: utctoday().year, ge=2009, le=2100),
                user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Cashback rewards as a CSV, valued at fair market value on receipt.
 

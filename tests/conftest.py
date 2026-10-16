@@ -7,7 +7,13 @@ order and a failure left state behind for the next run.
 StaticPool is required: without it each connection to `sqlite:///:memory:` gets
 its own private database, so the schema created on one connection is invisible
 to the next.
+
+Production runs on Postgres, and SQLite forgives things Postgres does not, so
+the same suite also runs against a real server when TEST_DATABASE_URL is set
+(CI does this). The schema is dropped and recreated per test either way.
 """
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -17,7 +23,7 @@ from sqlalchemy.pool import StaticPool
 import main
 from app import anomaly_detector, btc_service, rate_limit
 from app.auth import hash_password
-from app.database import Base, get_db
+from app.database import Base, enforce_sqlite_foreign_keys, get_db
 from app.models import User
 
 TEST_BTC_PRICE = 50_000.0
@@ -25,11 +31,17 @@ TEST_BTC_PRICE = 50_000.0
 
 @pytest.fixture
 def engine():
-    eng = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    url = os.environ.get("TEST_DATABASE_URL")
+    if url:
+        eng = create_engine(url)
+        Base.metadata.drop_all(bind=eng)
+    else:
+        eng = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        enforce_sqlite_foreign_keys(eng)
     Base.metadata.create_all(bind=eng)
     yield eng
     Base.metadata.drop_all(bind=eng)
