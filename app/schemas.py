@@ -8,15 +8,33 @@ class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class RequestModel(BaseModel):
+    """Base for every request body.
+
+    Python's JSON parser accepts the non-standard tokens NaN and Infinity, and
+    pydantic accepts them as floats unless told otherwise. An Infinity target
+    price was stored, then crashed every later read of that user's alerts,
+    because it cannot be written back out as JSON.
+    """
+    model_config = ConfigDict(allow_inf_nan=False)
+
+
+# Every bitcoin there will ever be, in sats. Nothing in this system can
+# legitimately exceed it, and it fits a BIGINT with room to spare - an
+# unbounded int reached Postgres and failed there as "bigint out of range".
+MAX_SATS = 21_000_000 * 100_000_000
+MAX_SPEND_USD = 1_000_000
+
+
 # --- auth ---
-class RegisterRequest(BaseModel):
+class RegisterRequest(RequestModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     display_name: str = Field(min_length=1, max_length=120)
     referral_code: str | None = None
 
 
-class LoginRequest(BaseModel):
+class LoginRequest(RequestModel):
     email: EmailStr
     password: str
 
@@ -37,8 +55,8 @@ class UserOut(ORMModel):
 
 
 # --- transactions ---
-class TransactionCreate(BaseModel):
-    amount_fiat: float = Field(gt=0, le=1_000_000)
+class TransactionCreate(RequestModel):
+    amount_fiat: float = Field(gt=0, le=MAX_SPEND_USD)
     category: str
     merchant: str = Field(min_length=1, max_length=120)
 
@@ -78,8 +96,8 @@ class TransactionResult(BaseModel):
     risk: dict
 
 
-class RewardPreviewRequest(BaseModel):
-    amount_fiat: float = Field(gt=0)
+class RewardPreviewRequest(RequestModel):
+    amount_fiat: float = Field(gt=0, le=MAX_SPEND_USD)
     category: str
 
 
@@ -103,57 +121,57 @@ class TransactionPage(PageMeta):
     items: list[TransactionOut]
 
 
-class GoalCreate(BaseModel):
+class GoalCreate(RequestModel):
     name: str = Field(min_length=1, max_length=120)
-    target_sats: int = Field(gt=0)
+    target_sats: int = Field(gt=0, le=MAX_SATS)
     icon: str = "target"
 
 
-class GoalAllocate(BaseModel):
-    sats: int = Field(gt=0)
+class GoalAllocate(RequestModel):
+    sats: int = Field(gt=0, le=MAX_SATS)
 
 
-class RoundUpUpdate(BaseModel):
+class RoundUpUpdate(RequestModel):
     is_enabled: bool
     multiplier: float = Field(ge=1.0, le=3.0)
 
 
-class AutoWithdrawUpdate(BaseModel):
+class AutoWithdrawUpdate(RequestModel):
     is_enabled: bool
-    threshold_sats: int = Field(ge=1000)
+    threshold_sats: int = Field(ge=1000, le=MAX_SATS)
     destination_address: str | None = None
 
 
-class BoostActivate(BaseModel):
+class BoostActivate(RequestModel):
     category: str
 
 
-class AlertCreate(BaseModel):
-    target_price: float = Field(gt=0)
+class AlertCreate(RequestModel):
+    target_price: float = Field(gt=0, le=100_000_000)
     direction: Literal["above", "below"]
 
 
 # --- security ---
-class TOTPVerify(BaseModel):
+class TOTPVerify(RequestModel):
     code: str = Field(min_length=6, max_length=6)
 
 
-class TOTPAuthenticate(BaseModel):
+class TOTPAuthenticate(RequestModel):
     challenge_token: str
     code: str
 
 
-class ForgotPasswordRequest(BaseModel):
+class ForgotPasswordRequest(RequestModel):
     email: EmailStr
 
 
-class ResetPasswordRequest(BaseModel):
+class ResetPasswordRequest(RequestModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
 
 
 # --- survey (Chapter 3.6) ---
-class SurveyResponseCreate(BaseModel):
+class SurveyResponseCreate(RequestModel):
     source: Literal["app", "web"]
     screen_active_trader: bool
     # Whether the respondent has actually used the prototype or seen a

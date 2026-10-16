@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -141,6 +142,21 @@ for router in ALL_ROUTERS:
 _SURVEY_DIR = Path(__file__).parent / "app" / "static" / "survey"
 if _SURVEY_DIR.exists():
     app.mount("/survey", StaticFiles(directory=_SURVEY_DIR, html=True), name="survey")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    """422 with each problem's location and message, without the rejected value.
+
+    FastAPI's default echoes the rejected input back. A non-finite float
+    cannot be encoded as JSON, so rejecting `NaN` crashed this handler and the
+    client got a 500 for what was a validation failure. The mobile client only
+    reads `msg`, so nothing it relies on is lost.
+    """
+    errors = [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
+              for e in exc.errors()]
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        content={"detail": errors})
 
 
 @app.exception_handler(Exception)

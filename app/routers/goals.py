@@ -21,9 +21,21 @@ def _serialise(g: SavingsGoal) -> dict:
     }
 
 
-def _owned_goal(db: Session, goal_id: int, user_id: int) -> SavingsGoal:
-    goal = db.query(SavingsGoal).filter(
-        SavingsGoal.id == goal_id, SavingsGoal.user_id == user_id).first()
+def _owned_goal(db: Session, goal_id: int, user_id: int,
+                for_update: bool = False) -> SavingsGoal:
+    """The goal, if this user owns it.
+
+    `for_update` locks the row for the rest of the request. Without it, two
+    simultaneous deletes both read the goal's balance before either removed
+    it, and both refunded it. With it, the second waits, then finds the goal
+    gone and gets 404. Goal before wallet, in every handler, so two requests
+    can never hold the locks in opposite orders and deadlock.
+    """
+    q = db.query(SavingsGoal).filter(
+        SavingsGoal.id == goal_id, SavingsGoal.user_id == user_id)
+    if for_update:
+        q = q.with_for_update()
+    goal = q.first()
     if goal is None:
         raise HTTPException(404, "That goal no longer exists.")
     return goal
@@ -50,7 +62,7 @@ def create_goal(body: GoalCreate, user: User = Depends(get_current_user),
 @router.post("/{goal_id}/allocate")
 def allocate_goal(goal_id: int, body: GoalAllocate, user: User = Depends(get_current_user),
                   db: Session = Depends(get_db)):
-    goal = _owned_goal(db, goal_id, user.id)
+    goal = _owned_goal(db, goal_id, user.id, for_update=True)
     wallet = get_wallet(db, user.id, for_update=True)
     if wallet.balance_sats < body.sats:
         raise HTTPException(400, f"You have {wallet.balance_sats:,} sats available.")
@@ -69,7 +81,7 @@ def allocate_goal(goal_id: int, body: GoalAllocate, user: User = Depends(get_cur
 @router.delete("/{goal_id}")
 def delete_goal(goal_id: int, user: User = Depends(get_current_user),
                 db: Session = Depends(get_db)):
-    goal = _owned_goal(db, goal_id, user.id)
+    goal = _owned_goal(db, goal_id, user.id, for_update=True)
     returned = goal.current_sats
     if returned:
         credit_wallet(db, user.id, returned, "goal_allocation")

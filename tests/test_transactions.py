@@ -130,3 +130,24 @@ def test_preview_matches_what_the_purchase_pays(client, headers):
                           json={"amount_fiat": 75.0, "category": "travel"}).json()
     actual = spend(client, headers, amount=75.0, category="travel").json()
     assert preview["total_sats"] == actual["reward"]["total_sats"]
+
+
+# ------------------------------------------------------------ hostile input
+@pytest.mark.parametrize("path,raw", [
+    # Python's JSON parser accepts NaN and Infinity, so a client can send them.
+    ("/api/alerts", '{"target_price": Infinity, "direction": "above"}'),
+    ("/api/alerts", '{"target_price": NaN, "direction": "above"}'),
+    ("/api/transactions", '{"amount_fiat": NaN, "category": "dining", "merchant": "x"}'),
+    ("/api/rewards/preview", '{"amount_fiat": Infinity, "category": "dining"}'),
+    ("/api/rewards/preview", '{"amount_fiat": 1e300, "category": "dining"}'),
+    ("/api/goals", '{"name": "x", "target_sats": 99999999999999999999999}'),
+])
+def test_out_of_range_numbers_are_a_422_not_a_crash(client, headers, path, raw):
+    """Regression: each of these returned 500. The Infinity alert was also
+    saved first, after which listing that user's alerts failed permanently."""
+    r = client.post(path, content=raw,
+                    headers={**headers, "content-type": "application/json"})
+    assert r.status_code == 422
+    assert all("msg" in e for e in r.json()["detail"])
+    assert client.get("/api/alerts", headers=headers).status_code == 200
+

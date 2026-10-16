@@ -1,6 +1,7 @@
 import json
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.anomaly_detector import score_transaction
@@ -40,6 +41,19 @@ def _result(db: Session, tx: Transaction, reward: dict, round_up_info, streak,
     )
 
 
+def _already_recorded(db: Session, user_id: int, key: str | None) -> None:
+    """Raise 409 if `key` already names a transaction for this user."""
+    if not key:
+        return
+    existing = db.query(Transaction).filter(
+        Transaction.user_id == user_id, Transaction.idempotency_key == key).first()
+    if existing:
+        raise HTTPException(409, {
+            "message": "That transaction was already recorded.",
+            "transaction_id": existing.id,
+        })
+
+
 @router.post("/transactions", response_model=TransactionResult)
 def create_transaction(
     body: TransactionCreate,
@@ -59,19 +73,13 @@ def create_transaction(
     implementation and what payment processors do, but it is more machinery than
     this prototype needs. The guarantee that matters is upheld either way: the
     payout happens exactly once.
+
+    The unique constraint on (user_id, idempotency_key) is the guarantee, not
+    a lookup beforehand. A lookup-then-insert let two simultaneous requests
+    both see "not yet recorded"; the constraint still stopped the second
+    payout, but as an unhandled IntegrityError, so a routine retry got a 500.
     """
     rate_limit(f"tx:{user.id}", 20)
-
-    if idempotency_key:
-        existing = db.query(Transaction).filter(
-            Transaction.user_id == user.id,
-            Transaction.idempotency_key == idempotency_key,
-        ).first()
-        if existing:
-            raise HTTPException(409, {
-                "message": "That transaction was already recorded.",
-                "transaction_id": existing.id,
-            })
 
     cat = category_or_404(db, body.category)
     price = price_for_reward()
@@ -90,7 +98,12 @@ def create_transaction(
         created_at=utcnow(),
     )
     db.add(tx)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        _already_recorded(db, user.id, idempotency_key)
+        raise
 
     db.add(RewardEvent(
         user_id=user.id, transaction_id=tx.id, btc_amount=reward["total_sats"],
