@@ -32,6 +32,12 @@ const GROUPS = [
       { icon: "PartyPopper", label: "Monthly recap", to: "/recap" },
     ],
   },
+  {
+    label: "Help us build this",
+    items: [
+      { icon: "ClipboardList", label: "Product research survey", to: "/survey", note: "2 min, anonymous" },
+    ],
+  },
 ];
 
 export default function More() {

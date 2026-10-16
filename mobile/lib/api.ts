@@ -6,8 +6,9 @@ import type {
   AutoWithdrawConfig, BoostAdvice, Boosts, BtcPrice, Category, Forecast,
   FlaggedTransaction, FraudSummary, Goal, Insights, LeaderboardRow, LedgerEntry,
   Notifications, Page, Persona, PriceAlert, Recap, Referral, RewardBreakdown,
-  RewardsSummary, RoundUpConfig, Spending, TokenResponse, Transaction,
-  TransactionResult, TwoFactorSetup, TwoFactorStatus, User, Wallet, WalletGrowth,
+  RewardsSummary, RoundUpConfig, Spending, SurveyResponseCreate, SurveyResponseOut,
+  TokenResponse, Transaction, TransactionResult, TwoFactorSetup, TwoFactorStatus,
+  User, Wallet, WalletGrowth,
 } from "./types";
 
 /**
@@ -164,6 +165,11 @@ export const configAPI = {
   setRoundup: (b: RoundUpConfig) => put<RoundUpConfig>("/api/roundup/config", b),
   getAutoWithdraw: () => get<AutoWithdrawConfig>("/api/auto-withdraw/config"),
   setAutoWithdraw: (b: AutoWithdrawConfig) => put<AutoWithdrawConfig>("/api/auto-withdraw/config", b),
+};
+
+export const surveyAPI = {
+  submit: (b: Omit<SurveyResponseCreate, "source">) =>
+    post<SurveyResponseOut>("/api/survey/responses", { source: "app", ...b }),
 };
 
 export const miscAPI = {
