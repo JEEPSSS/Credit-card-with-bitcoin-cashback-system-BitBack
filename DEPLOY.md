@@ -66,7 +66,13 @@ the limits.
    ```
    uvicorn main:app --host 0.0.0.0 --port $PORT
    ```
-4. **Instance type:** Free is fine for a survey link. The real tradeoff:
+   One worker, deliberately - do not add `--workers`. The rate limiter and the
+   price-alert sweep live in process memory, so four workers would give every
+   caller four times each limit and sweep every alert four times.
+4. **Health Check Path** (under *Advanced*): `/api/health`. It runs a real
+   database query and returns 503 if Neon is unreachable, so Render can tell
+   a running process from a working service.
+5. **Instance type:** Free is fine for a survey link. The real tradeoff:
    a free instance spins down after 15 minutes with no traffic, so the
    first visitor after a quiet stretch waits ~30-50 seconds for a cold
    start before the page loads. For a link you're sharing occasionally,
@@ -83,8 +89,10 @@ Set these on the web service (Render's **Environment** tab), matching what
 |---|---|---|
 | `ENVIRONMENT` | `production` | Switches on production-only checks — notably the one below. |
 | `DATABASE_URL` | the Neon connection string from step 2, including `?sslmode=require` | Without this it falls back to a local SQLite file, which does not persist on Render's ephemeral disk — every deploy would wipe it. |
-| `SECRET_KEY` | a real random value — generate one with `python -c "import secrets; print(secrets.token_hex(32))"` | The app's own startup validator refuses to boot with `ENVIRONMENT=production` and the default dev secret, specifically so this can't be forgotten. |
+| `SECRET_KEY` | a real random value — generate one with `python -c "import secrets; print(secrets.token_hex(32))"` | With `ENVIRONMENT=production` the app refuses to boot on the default secret, a secret under 32 bytes, `DEMO_MODE=true`, or a SQLite `DATABASE_URL` — so none of these can be forgotten. |
 | `DEMO_MODE` | `false` | **This is a real security fix, not a nice-to-have.** `DEMO_MODE=True` is the default, and it returns password-reset tokens directly in the API response so the flow can be demoed without an email provider — see the comment in `app/config.py`. Left on in production, anyone who knows a registered email can take over that account. |
+| `CLIENT_IP_SOURCE` | `cf-connecting-ip` **after** the check in step 5 passes; until then leave it unset | Rate limits key on the caller's address. The default reads the first `X-Forwarded-For` entry, which a client can set to anything to get a fresh limit per request. |
+| `SUPPORT_EMAIL` | the address you want on the privacy policy | Shown at `/privacy`, which the App Store listing links to. |
 | `CORS_ORIGINS` | leave default (`["*"]`) unless you're restricting it | The native app doesn't send an Origin header, so this mainly matters if you point a browser-based client at the API directly. Fine to leave open for a survey/demo deployment. |
 
 ## 5. Deploy and check it
@@ -98,8 +106,34 @@ Once the deploy finishes, Render gives you a URL like
   aggregate (all zeros until responses come in) — confirms the API and
   database are wired up correctly.
 
+- `https://bitback-xyz.onrender.com/api/health` returns `"database": "ok"`
+  and `"price_stale": false`.
+- **Which address the rate limiter sees.** Run these two from your laptop:
+  ```
+  curl https://bitback-xyz.onrender.com/api/meta/client-ip
+  curl -H "X-Forwarded-For: 6.6.6.6" https://bitback-xyz.onrender.com/api/meta/client-ip
+  ```
+  With the default source the second reports `6.6.6.6` — proof that a client
+  can choose its own address. Set `CLIENT_IP_SOURCE=cf-connecting-ip`, redeploy,
+  and run both again: if both now report your real address, keep it. If the
+  first one reports something that is not your address, `CF-Connecting-IP` is
+  not being set on your service; put the setting back and note it as a known
+  limitation.
+- `https://bitback-xyz.onrender.com/privacy` shows the privacy policy.
+
 That `/survey/` URL is what replaces `localhost` — it's the same page,
 same mascot, same game, now reachable by anyone.
+
+### What the free tier cannot do
+
+- **Price alerts only fire while the instance is awake.** It sleeps after 15
+  idle minutes and nothing runs while it sleeps. A sweep runs as soon as it
+  wakes, so an alert whose price is still crossed fires on the next visit; a
+  price that crossed and came back while it slept is missed. A paid instance
+  removes this.
+- **The first deploy of this version signs everyone out once.** Session
+  tokens are now bound to the password they were issued against, and tokens
+  from before the change carry no binding.
 
 ## 6. Pointing the mobile app at it (optional)
 
@@ -113,11 +147,21 @@ EXPO_PUBLIC_API_URL=https://bitback-xyz.onrender.com npx expo start
 
 ## 7. When you're done collecting responses
 
-Export what you need (the `/api/survey/summary` endpoint, or a direct
-`pg_dump` of the `survey_responses` table using the Neon connection string
-if you want the raw rows). Nothing needs to be deleted to stop a
-charge — both pieces are free — but you can delete the Neon project and
-the Render service afterward if you'd rather not leave them sitting there.
+Export every response, labelled by analysis cohort, from your own machine:
+
+```
+DATABASE_URL='<the Neon connection string>' python -m scripts.export_survey survey.csv
+```
+
+The `cohort` column separates respondents who used the app, those who only
+saw the concept, those screened out, and `legacy` rows collected before the
+"have you used the app?" question existed — analyse that last group's Q4-Q7
+separately. The file includes free-text answers for thematic coding, so keep
+it out of the repository. `/api/survey/summary` gives the same groups as
+medians and interquartile ranges.
+
+Nothing needs to be deleted to stop a charge — both pieces are free — but you
+can delete the Neon project and the Render service afterward.
 
 ## Paid alternatives, if Neon's limits ever don't fit
 
