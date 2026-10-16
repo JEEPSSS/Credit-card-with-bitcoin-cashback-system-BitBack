@@ -159,3 +159,74 @@ def test_a_backup_code_works_once(client, totp_enabled):
 
     assert attempt().status_code == 200
     assert attempt().status_code == 400, "a backup code was accepted twice"
+
+
+# ------------------------------------------------------- token revocation
+def _reset_token(client):
+    return client.post("/api/auth/forgot-password",
+                       json={"email": "user@test.io"}).json()["reset_token"]
+
+
+def test_a_reset_link_works_only_once(client):
+    """Regression: a reset token stayed valid for its full 15 minutes, however
+    many times it was used and even after the password had changed."""
+    register(client)
+    token = _reset_token(client)
+    first = client.post("/api/auth/reset-password",
+                        json={"token": token, "new_password": "brandnew123"})
+    second = client.post("/api/auth/reset-password",
+                         json={"token": token, "new_password": "attacker123"})
+    assert first.status_code == 200
+    assert second.status_code == 400
+    assert client.post("/api/auth/login", json={
+        "email": "user@test.io", "password": "brandnew123"}).status_code == 200
+
+
+def test_resetting_the_password_signs_out_every_device(client):
+    old_session = register(client).json()["access_token"]
+    client.post("/api/auth/reset-password",
+                json={"token": _reset_token(client), "new_password": "brandnew123"})
+    r = client.get("/api/auth/me", headers={"Authorization": f"Bearer {old_session}"})
+    assert r.status_code == 401
+
+
+# ------------------------------------------------- per-account rate limits
+def test_password_guessing_is_limited_per_account_not_just_per_address(client, monkeypatch):
+    """Rotating addresses must not buy unlimited guesses at one account."""
+    monkeypatch.setattr(settings, "client_ip_source", "x-forwarded-for")
+    register(client)
+    codes = [client.post("/api/auth/login",
+                         headers={"X-Forwarded-For": f"10.0.{i}.1"},
+                         json={"email": "user@test.io", "password": f"guess{i}"}).status_code
+             for i in range(12)]
+    assert 429 in codes
+
+
+def test_2fa_codes_are_limited_per_account(client, totp_enabled, monkeypatch):
+    monkeypatch.setattr(settings, "client_ip_source", "x-forwarded-for")
+    challenge = client.post("/api/auth/login", json={
+        "email": "user@test.io", "password": "password123"}).json()["challenge_token"]
+    codes = [client.post("/api/auth/2fa/authenticate",
+                         headers={"X-Forwarded-For": f"10.1.{i}.1"},
+                         json={"challenge_token": challenge, "code": "000000"}).status_code
+             for i in range(8)]
+    assert 429 in codes
+
+
+def test_a_long_window_survives_a_sweep_triggered_by_a_short_one(monkeypatch):
+    """Regression: the sweep used the caller's window for every key, so a
+    one-minute limit could erase a one-hour key still inside its hour."""
+    from fastapi import HTTPException
+
+    from app import rate_limit as rl
+
+    # Ahead of the real clock, so the sweep's own interval has elapsed.
+    clock = [rl.time.time() + 100_000]
+    monkeypatch.setattr(rl.time, "time", lambda: clock[0])
+    rl.reset()
+    for _ in range(5):
+        rl.rate_limit("signup", 5, window=3600)
+    clock[0] += 600                          # ten minutes on: inside the hour
+    rl.rate_limit("login", 5, window=60)     # triggers a sweep
+    with pytest.raises(HTTPException):
+        rl.rate_limit("signup", 5, window=3600)

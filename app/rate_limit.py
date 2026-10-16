@@ -17,23 +17,32 @@ from fastapi import HTTPException, Request, status
 from app.config import settings
 
 _hits: dict[str, list[float]] = defaultdict(list)
+_windows: dict[str, int] = {}
 _last_sweep = 0.0
 SWEEP_INTERVAL = 300
 
 
-def _sweep(now: float, window: int) -> None:
-    """Drop keys whose most recent hit has aged out of the window."""
+def _sweep(now: float) -> None:
+    """Drop keys whose most recent hit has aged out of *that key's* window.
+
+    The sweep used to apply the window of whichever call happened to trigger
+    it. A one-minute login check could then delete a signup key that was
+    still inside its one-hour window, quietly resetting the signup limit.
+    """
     global _last_sweep
     if now - _last_sweep < SWEEP_INTERVAL:
         return
     _last_sweep = now
-    for key in [k for k, v in _hits.items() if not v or now - v[-1] >= window]:
+    expired = [k for k, v in _hits.items() if not v or now - v[-1] >= _windows.get(k, 0)]
+    for key in expired:
         del _hits[key]
+        _windows.pop(key, None)
 
 
 def rate_limit(key: str, limit: int, window: int = 60) -> None:
     now = time.time()
-    _sweep(now, window)
+    _sweep(now)
+    _windows[key] = window
     _hits[key] = [t for t in _hits[key] if now - t < window]
     if len(_hits[key]) >= limit:
         raise HTTPException(
@@ -68,4 +77,7 @@ def client_ip(request: Request) -> str:
 
 def reset() -> None:
     """Test hook: clears all buckets."""
+    global _last_sweep
     _hits.clear()
+    _windows.clear()
+    _last_sweep = 0.0

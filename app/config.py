@@ -11,7 +11,9 @@ from typing import Literal
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEV_SECRET = "dev-secret-change-me"
+DEV_SECRET = "dev-secret-change-me-before-deploying-anywhere"
+# RFC 7518 s3.2: an HS256 key should be at least as long as the hash output.
+MIN_SECRET_BYTES = 32
 
 
 class Settings(BaseSettings):
@@ -78,6 +80,8 @@ class Settings(BaseSettings):
         problems = []
         if self.secret_key == DEV_SECRET:
             problems.append("SECRET_KEY is still the development default")
+        elif len(self.secret_key.encode()) < MIN_SECRET_BYTES:
+            problems.append(f"SECRET_KEY must be at least {MIN_SECRET_BYTES} bytes for HS256")
         if self.demo_mode:
             # Demo mode returns password-reset tokens in the API response, so
             # anyone who knows a registered email could take over the account.

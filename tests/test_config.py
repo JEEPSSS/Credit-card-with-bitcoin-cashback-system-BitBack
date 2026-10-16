@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from app.config import DEV_SECRET, Settings
 
-SAFE = {"environment": "production", "secret_key": "a-real-secret",
+SAFE = {"environment": "production", "secret_key": "k" * 64,
         "demo_mode": False, "database_url": "postgresql://u:p@db/bitback"}
 
 
@@ -18,6 +18,7 @@ def test_a_correctly_configured_production_starts():
 
 @pytest.mark.parametrize("override,reason", [
     ({"secret_key": DEV_SECRET}, "SECRET_KEY"),
+    ({"secret_key": "short"}, "32 bytes"),
     ({"demo_mode": True}, "DEMO_MODE"),
     ({"database_url": "sqlite:///./bitback.db"}, "SQLite"),
 ])

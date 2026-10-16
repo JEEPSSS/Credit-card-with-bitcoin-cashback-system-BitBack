@@ -7,9 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.auth import (
     create_access_token,
+    decode_claims,
     decode_token,
     get_current_user,
     hash_password,
+    issue_token,
+    matches_current_password,
     verify_password,
 )
 from app.config import settings
@@ -35,7 +38,7 @@ BACKUP_CODE_COUNT = 8
 
 def _session(user: User) -> TokenResponse:
     return TokenResponse(
-        access_token=create_access_token(user.id),
+        access_token=issue_token(user),
         user={"id": user.id, "email": user.email, "display_name": user.display_name},
     )
 
@@ -80,6 +83,9 @@ def register(body: RegisterRequest, request: Request, db: Session = Depends(get_
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     rate_limit(f"login:{client_ip(request)}", 5)
+    # Per account as well as per address: an address limit alone lets a
+    # password-guessing run against one account spread over many addresses.
+    rate_limit(f"login-account:{body.email.lower()}", 10, window=900)
     user = db.query(User).filter(User.email == body.email.lower()).first()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(401, "That email and password don't match.")
@@ -110,14 +116,18 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
     # provider is the whole point. In any other configuration the shape is
     # identical for both cases and the endpoint cannot enumerate accounts.
     if user and settings.demo_mode:
-        response["reset_token"] = create_access_token(user.id, "reset", minutes=15)
+        response["reset_token"] = issue_token(user, "reset", minutes=15)
     return response
 
 
 @router.post("/reset-password")
 def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == decode_token(body.token, "reset")).first()
-    if not user:
+    claims = decode_claims(body.token, "reset")
+    user = db.query(User).filter(User.id == claims["sub"]).first()
+    # Bound to the password it was issued against, so it stops working the
+    # moment it is used - it was previously valid for its full 15 minutes,
+    # any number of times, even after the password had been changed.
+    if not user or not matches_current_password(claims, user):
         raise HTTPException(400, "That reset link is no longer valid.")
     user.password_hash = hash_password(body.new_password)
     db.commit()
@@ -145,6 +155,7 @@ def totp_setup(user: User = Depends(get_current_user), db: Session = Depends(get
 @router.post("/2fa/verify")
 def totp_verify(body: TOTPVerify, user: User = Depends(get_current_user),
                 db: Session = Depends(get_db)):
+    rate_limit(f"2fa-account:{user.id}", 5)
     record = db.query(UserTOTP).filter(UserTOTP.user_id == user.id).first()
     if not record:
         raise HTTPException(400, "Start the setup first.")
@@ -160,6 +171,9 @@ def totp_verify(body: TOTPVerify, user: User = Depends(get_current_user),
 @router.post("/2fa/disable")
 def totp_disable(body: TOTPVerify, user: User = Depends(get_current_user),
                  db: Session = Depends(get_db)):
+    # A stolen session must not be able to brute-force the code that
+    # removes the second factor.
+    rate_limit(f"2fa-account:{user.id}", 5)
     record = db.query(UserTOTP).filter(UserTOTP.user_id == user.id).first()
     if not record or not record.is_enabled:
         raise HTTPException(400, "Two-factor authentication isn't on.")
@@ -174,6 +188,10 @@ def totp_disable(body: TOTPVerify, user: User = Depends(get_current_user),
 def totp_authenticate(body: TOTPAuthenticate, request: Request, db: Session = Depends(get_db)):
     rate_limit(f"2fa:{client_ip(request)}", 10)
     user_id = decode_token(body.challenge_token, "2fa")
+    # A six-digit code has a million values and three are accepted at once
+    # (valid_window=1). Limited only per address, a password-holding attacker
+    # could guess from many addresses; per account, they get 5 a minute.
+    rate_limit(f"2fa-account:{user_id}", 5)
     record = db.query(UserTOTP).filter(UserTOTP.user_id == user_id).first()
     user = db.query(User).filter(User.id == user_id).first()
     if not record or not user:
