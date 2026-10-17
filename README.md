@@ -4,6 +4,18 @@ A card that pays cashback in satoshis instead of points, with the reward engine,
 gamification, and five analytical models running on the user's own transaction
 history. FastAPI backend, Expo (React Native) mobile app.
 
+## Try it
+
+- **Android app:** download the APK from the
+  [latest release](https://github.com/JEEPSSS/Bitcoin-cashback-system/releases/latest)
+  and open it on an Android phone (allow "install unknown apps" when asked).
+- **Live API:** https://bitcoin-survey.onrender.com (health check at
+  `/api/health`). It runs on Render's free tier and sleeps when idle, so the
+  first request can take up to a minute; the app shows "Waking up the
+  server..." while it does.
+- **Research survey:** https://bitcoin-survey.onrender.com/survey/
+- **Privacy policy:** https://bitcoin-survey.onrender.com/privacy
+
 ## Run it
 
 **Backend**
@@ -37,10 +49,14 @@ Demo login: `demo@bitback.app` / `demo12345`
 **Tests**
 
 ```bash
-pytest                    # 89 backend tests, each on its own in-memory database
-ruff check app main.py seed_demo.py tests
-cd mobile && npm test     # 15 front-end tests
+pytest                    # 159 backend tests, each on its own in-memory database
+TEST_DATABASE_URL=postgresql://... pytest   # the same suite on Postgres (+2 race tests)
+ruff check app main.py seed_demo.py tests evaluation scripts
+cd mobile && npm test     # 39 front-end tests
 ```
+
+How the backend was hardened for production, with evidence for each finding:
+[docs/BACKEND_HARDENING.md](docs/BACKEND_HARDENING.md).
 
 ## Layout
 
