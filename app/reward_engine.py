@@ -4,7 +4,7 @@ sats = (spend * base_rate / btc_price) * 1e8, then scaled by the user's level
 multiplier and any active category boost. Kept pure and free of DB access so it
 can be unit tested directly.
 """
-import math
+from decimal import ROUND_HALF_UP, Decimal
 
 SATS_PER_BTC = 100_000_000
 
@@ -58,10 +58,18 @@ def calculate_reward(
     with_level = base_sats * user_level_multiplier
     total = with_level * boost_multiplier
 
+    # Round the running totals, then take differences. Rounding each part on
+    # its own (as the first version did) let the rounding errors leak into
+    # whichever part was computed last: in a 200,000-purchase property check
+    # (evaluation/rewards.py) 9.1% of receipts with no boost active showed a
+    # 1-sat "boost bonus", and 4.3% showed a negative part. Differences of
+    # rounded running totals are exactly zero when a multiplier is 1, never
+    # negative (rounding is monotonic), and always sum to the total.
     base_i = int(round(base_sats))
+    with_level_i = int(round(with_level))
     total_i = int(round(total))
-    level_bonus = int(round(with_level - base_sats))
-    boost_bonus = total_i - base_i - level_bonus
+    level_bonus = with_level_i - base_i
+    boost_bonus = total_i - with_level_i
     effective = rate * user_level_multiplier * boost_multiplier
 
     return {
@@ -78,9 +86,17 @@ def calculate_reward(
 
 
 def round_up_sats(amount_fiat: float, multiplier: float, btc_price: float) -> tuple[float, int]:
-    """Spare change to the next dollar, scaled, converted to sats."""
-    spare = math.ceil(amount_fiat) - amount_fiat
-    if spare <= 0:
+    """Spare change to the next dollar, scaled, converted to sats.
+
+    Worked in whole cents and Decimal. The float version showed the wrong cent
+    at every half-cent tie - $0.39 spare x 1.5 = $0.585 displayed as $0.58,
+    because 0.585 is stored as 0.58499... - which a property check
+    (evaluation/rewards.py) found in 6% of round-ups. Money rounds half up.
+    """
+    cents = int(round(amount_fiat * 100))
+    spare_cents = -cents % 100
+    if spare_cents == 0:
         return 0.0, 0
-    spare *= multiplier
-    return round(spare, 2), int(round((spare / btc_price) * SATS_PER_BTC))
+    spare = Decimal(spare_cents) / 100 * Decimal(str(multiplier))
+    shown = spare.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return float(shown), int(round(float(spare) / btc_price * SATS_PER_BTC))

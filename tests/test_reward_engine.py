@@ -75,3 +75,32 @@ def test_round_up_scales_by_the_multiplier():
 
 def test_a_whole_dollar_amount_has_no_spare_change():
     assert round_up_sats(10.00, 2.0, PRICE) == (0.0, 0)
+
+
+# ------------------------------------------------- found by evaluation/rewards.py
+def test_no_boost_means_no_boost_line_on_the_receipt():
+    """Regression: rounding each part separately put a "+1 sat boost" on 9% of
+    receipts with no boost active. This purchase was one of them."""
+    r = calculate_reward(3686.91, "general", 28363.639231850066, base_rate=0.02,
+                         user_level_multiplier=1.5, boost_multiplier=1.0)
+    assert r["boost_bonus"] == 0
+    assert r["base_sats"] + r["level_bonus"] == r["total_sats"]
+
+
+@pytest.mark.parametrize("amount", [0.01, 0.99, 7.77, 123.45, 3686.91, 99_999.99])
+@pytest.mark.parametrize("level", [1.0, 1.1, 1.2, 1.3, 1.5])
+@pytest.mark.parametrize("boost", [1.0, 2.0])
+def test_breakdown_parts_are_never_negative_and_always_sum(amount, level, boost):
+    r = calculate_reward(amount, "general", 61_234.5, base_rate=0.015,
+                         user_level_multiplier=level, boost_multiplier=boost)
+    assert r["level_bonus"] >= 0 and r["boost_bonus"] >= 0
+    assert r["base_sats"] + r["level_bonus"] + r["boost_bonus"] == r["total_sats"]
+    if level == 1.0:
+        assert r["level_bonus"] == 0
+
+
+def test_half_a_cent_of_spare_change_rounds_up():
+    """Regression: $0.39 x 1.5 = $0.585 was shown as $0.58 (0.585 is stored as
+    0.58499... in floating point)."""
+    assert round_up_sats(21256.61, 1.5, PRICE)[0] == 0.59
+    assert round_up_sats(30478.95, 1.5, PRICE)[0] == 0.08

@@ -21,7 +21,7 @@ from app.anomaly_detector import (
 from app.clock import utcnow
 from app.ml_forecast import HORIZON_DAYS, forecast_earnings
 from app.models import RewardEvent, Transaction
-from app.spending_persona import classify_persona
+from app.spending_persona import MIN_TRANSACTIONS, classify_persona
 
 
 @pytest.fixture
@@ -158,21 +158,27 @@ def test_the_trend_estimate_does_not_enter_the_prediction(db, user):
 
 
 # -------------------------------------------------------------------- persona
-def add_spend(db, user_id, by_category: dict[str, float]):
+def add_spend(db, user_id, by_category: dict[str, float], per_category: int = 10):
     for i, (category, amount) in enumerate(by_category.items()):
-        for j in range(3):
+        for j in range(per_category):
             db.add(Transaction(
-                user_id=user_id, amount_fiat=amount / 3, category=category,
+                user_id=user_id, amount_fiat=amount / per_category, category=category,
                 merchant=f"{category}-{j}", btc_price_at_time=50_000.0, sats_earned=100,
-                created_at=utcnow() - timedelta(days=i * 3 + j),
+                created_at=utcnow() - timedelta(days=i * per_category + j),
             ))
     db.commit()
 
 
-def test_persona_needs_five_transactions(db, user):
+def test_persona_waits_for_enough_purchases(db, user):
+    """Raised from 5 to 20: at 5 the classifier was right barely half the time."""
     result = classify_persona(db, user.id)
     assert result["has_enough_data"] is False
-    assert result["transactions_needed"] == 5
+    assert result["transactions_needed"] == MIN_TRANSACTIONS == 20
+
+
+def test_persona_stays_locked_one_purchase_short(db, user):
+    add_spend(db, user.id, {"dining": 700}, per_category=MIN_TRANSACTIONS - 1)
+    assert classify_persona(db, user.id)["transactions_needed"] == 1
 
 
 @pytest.mark.parametrize("profile,expected", [

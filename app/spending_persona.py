@@ -8,6 +8,7 @@ proportions, so magnitude carries no information and only direction matters.
 """
 import math
 from collections import defaultdict
+from collections.abc import Mapping
 
 from sqlalchemy.orm import Session
 
@@ -48,18 +49,36 @@ def _cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb) if na > 1e-9 and nb > 1e-9 else 0.0
 
 
+# Below this many purchases the persona is mostly noise. Evaluated on
+# simulated cardholders of known persona (evaluation/persona.py): after 5
+# purchases it was right 55-57% of the time while reporting ~66% confidence;
+# after 20 it was right 69-80% and its confidence was calibrated (ECE 0.03).
+# The threshold was 5; it is 20 so the app stops presenting a coin flip as a
+# finding.
+MIN_TRANSACTIONS = 20
+
+
 def classify_persona(db: Session, user_id: int) -> dict:
     txs = db.query(Transaction).filter(Transaction.user_id == user_id).all()
-    if len(txs) < 5:
+    if len(txs) < MIN_TRANSACTIONS:
         return {
             "has_enough_data": False,
-            "message": "Five transactions unlocks your spending persona.",
-            "transactions_needed": 5 - len(txs),
+            "message": f"{MIN_TRANSACTIONS} purchases unlock your spending persona.",
+            "transactions_needed": MIN_TRANSACTIONS - len(txs),
         }
 
     spend = defaultdict(float)
     for t in txs:
         spend[t.category] += t.amount_fiat
+    return persona_from_spend(spend)
+
+
+def persona_from_spend(spend: Mapping[str, float]) -> dict:
+    """The classifier itself: spend per category in, persona out.
+
+    Separate from the database query so it can be evaluated on thousands of
+    simulated spending profiles directly (evaluation/persona.py).
+    """
     total = sum(spend.values()) or 1.0
     vector = [spend.get(c, 0.0) / total for c in CATEGORIES]
 

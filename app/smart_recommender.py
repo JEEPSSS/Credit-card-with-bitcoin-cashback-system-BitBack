@@ -1,19 +1,31 @@
-"""Content-based ranking of which category boost to activate.
+"""Which category boost to activate, ranked by what the boost is worth.
 
-A boost doubles cashback in one category for 30 days, so the value of a boost is
-the sats the user would have earned there anyway, doubled. Ranking is therefore
-a scoring problem over the user's own spend profile, not a collaborative one -
-there is no cross-user signal that beats a cardholder's own history here.
+A boost doubles cashback in one category for 30 days, so its value is the
+cashback the cardholder would have earned there anyway: spend x base rate.
+The ranking is that quantity over the last 60 days, projected to a month.
+
+The first version ranked by a weighted sum of five normalised factors
+(volume 0.30, frequency 0.25, base rate 0.15, trend 0.15, recency 0.15).
+A backtest against what each simulated cardholder actually spent in the 30
+days after the decision (evaluation/recommender.py) found it picking the best
+category less often than simply ranking by expected value. On a held-out
+population of 600 it picked the best category 61% of the time against 70%
+(paired difference 9.3 points, 95% CI 5.7-13.2). The ablations showed why:
+trend and recency changed nothing, frequency made it worse, and adding
+volume and rate cannot express that a boost is worth their *product*. The
+factors are still computed, because the app uses them to explain the pick.
 """
 import math
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.clock import days_ago, utcnow
+from app.clock import utcnow
 from app.models import CategoryCashback, Transaction
 
-WEIGHTS = {"spend_volume": 0.30, "frequency": 0.25, "base_rate": 0.15, "trend": 0.15, "recency": 0.15}
+# Reported to the client so the explanation can say what the ranking is.
+RANKING = {"expected_boost_value": 1.0}
 LOOKBACK_DAYS = 60
 
 
@@ -31,11 +43,19 @@ def _slope(pairs: list[tuple[float, float]]) -> float:
     return sum((p[0] - mx) * (p[1] - my) for p in pairs) / denom if denom else 0.0
 
 
-def recommend_boost(db: Session, user_id: int) -> dict:
-    since = days_ago(LOOKBACK_DAYS)
+def recommend_boost(db: Session, user_id: int, as_of: datetime | None = None) -> dict:
+    """Rank categories by how much a boost there is likely to be worth.
+
+    `as_of` lets the recommender be asked what it would have said at a past
+    moment, seeing only the history before it - which is how it is backtested
+    in evaluation/recommender.py. Omitted, it means now.
+    """
+    now = as_of or utcnow()
+    since = now - timedelta(days=LOOKBACK_DAYS)
     txs = (
         db.query(Transaction)
-        .filter(Transaction.user_id == user_id, Transaction.created_at >= since)
+        .filter(Transaction.user_id == user_id, Transaction.created_at >= since,
+                Transaction.created_at < now)
         .all()
     )
     rates = {c.category: c.base_rate for c in db.query(CategoryCashback).all()}
@@ -49,7 +69,6 @@ def recommend_boost(db: Session, user_id: int) -> dict:
         }
 
     volume, count, days = defaultdict(float), defaultdict(int), defaultdict(list)
-    now = utcnow()
     for t in txs:
         volume[t.category] += t.amount_fiat
         count[t.category] += 1
@@ -58,6 +77,8 @@ def recommend_boost(db: Session, user_id: int) -> dict:
     max_vol = max(volume.values()) or 1.0
     max_cnt = max(count.values()) or 1
     max_rate = max(rates.values()) if rates else 0.03
+    value = {cat: volume[cat] * rates.get(cat, 0.015) for cat in volume}
+    total_value = sum(value.values()) or 1.0
 
     results = []
     for cat in volume:
@@ -72,11 +93,8 @@ def recommend_boost(db: Session, user_id: int) -> dict:
         newest = min(d for d, _ in days[cat])
         rec_n = math.exp(-newest / 30)
 
-        score = (
-            WEIGHTS["spend_volume"] * v_n + WEIGHTS["frequency"] * f_n
-            + WEIGHTS["base_rate"] * r_n + WEIGHTS["trend"] * trend_n
-            + WEIGHTS["recency"] * rec_n
-        )
+        # Share of all the boostable value in this cardholder's spending.
+        score = value[cat] / total_value
         monthly_spend = volume[cat] * (30 / LOOKBACK_DAYS)
         extra_usd = monthly_spend * rates.get(cat, 0.015)
 
@@ -103,10 +121,12 @@ def recommend_boost(db: Session, user_id: int) -> dict:
             },
         })
 
-    results.sort(key=lambda r: r["score"], reverse=True)
+    # Ranked by the unrounded value; the category name breaks exact ties so
+    # the order never depends on database row order.
+    results.sort(key=lambda r: (-value[r["category"]], r["category"]))
     return {
         "has_enough_data": True,
         "recommendations": results,
         "top_pick": results[0],
-        "weights": WEIGHTS,
+        "weights": RANKING,
     }
