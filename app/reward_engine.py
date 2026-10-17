@@ -61,8 +61,8 @@ def calculate_reward(
     # Round the running totals, then take differences. Rounding each part on
     # its own (as the first version did) let the rounding errors leak into
     # whichever part was computed last: in a 200,000-purchase property check
-    # (evaluation/rewards.py) 9.1% of receipts with no boost active showed a
-    # 1-sat "boost bonus", and 4.3% showed a negative part. Differences of
+    # (evaluation/rewards.py) 18% of purchases with no boost active showed a
+    # 1-sat "boost bonus", and 4.3% of all purchases showed a negative part. Differences of
     # rounded running totals are exactly zero when a multiplier is 1, never
     # negative (rounding is monotonic), and always sum to the total.
     base_i = int(round(base_sats))

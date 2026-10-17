@@ -69,8 +69,8 @@ export default function Boosts() {
           </Text>
           <View style={{ flexDirection: "row", gap: 20, marginTop: 14 }}>
             <View>
-              <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>Match score</Text>
-              <Num size={fontSize.body} color={COLORS.primary}>{pick.score}</Num>
+              <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>Share of boost value</Text>
+              <Num size={fontSize.body} color={COLORS.primary}>{`${pick.score}%`}</Num>
             </View>
             <View>
               <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>Extra per month</Text>

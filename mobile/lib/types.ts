@@ -274,6 +274,7 @@ export type FraudSummary = {
 
 export type BoostRecommendation = {
   category: CategoryKey;
+  /** Share (0-100) of all the boostable value in recent spending; ranks the list. */
   score: number;
   predicted_extra_usd: number;
   monthly_spend: number;

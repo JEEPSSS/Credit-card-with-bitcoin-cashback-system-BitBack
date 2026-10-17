@@ -79,8 +79,8 @@ def test_a_whole_dollar_amount_has_no_spare_change():
 
 # ------------------------------------------------- found by evaluation/rewards.py
 def test_no_boost_means_no_boost_line_on_the_receipt():
-    """Regression: rounding each part separately put a "+1 sat boost" on 9% of
-    receipts with no boost active. This purchase was one of them."""
+    """Regression: rounding each part separately put a "+1 sat boost" on 18% of
+    purchases with no boost active. This purchase was one of them."""
     r = calculate_reward(3686.91, "general", 28363.639231850066, base_rate=0.02,
                          user_level_multiplier=1.5, boost_multiplier=1.0)
     assert r["boost_bonus"] == 0

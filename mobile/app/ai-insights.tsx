@@ -8,12 +8,12 @@ import { useApi } from "@/lib/useApi";
 import { Card, COLORS, ErrorNote, Header, Label, Loading, Num, Screen } from "@/components/ui";
 import { font, fontSize, iconSize } from "@/lib/theme";
 
+// Kept in step with the backend; each is evaluated in docs/EVALUATION.md.
 const MODELS = [
   { name: "Isolation Forest", use: "Fraud detection", lib: "scikit-learn" },
-  { name: "Damped Holt's smoothing", use: "Earnings trend", lib: "NumPy" },
-  { name: "Linear regression", use: "Baseline forecast", lib: "Pure Python" },
-  { name: "Weighted content ranking", use: "Boost recommendation", lib: "NumPy" },
-  { name: "Nearest-centroid cosine", use: "Spending persona", lib: "NumPy" },
+  { name: "Level smoothing + window mean", use: "Earnings forecast", lib: "Python" },
+  { name: "Expected-value ranking", use: "Boost recommendation", lib: "Python" },
+  { name: "Nearest-centroid cosine", use: "Spending persona", lib: "Python" },
 ];
 
 export default function AIInsights() {
@@ -112,7 +112,7 @@ export default function AIInsights() {
             {titleCase(d.boost.top_pick.category)}
           </Text>
           <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 6, lineHeight: 19 }}>
-            Score {d.boost.top_pick.score} · about {usd(d.boost.top_pick.predicted_extra_usd)} more each month
+            {d.boost.top_pick.score}% of your boost value · about {usd(d.boost.top_pick.predicted_extra_usd)} more each month
           </Text>
         </Card>
       )}
