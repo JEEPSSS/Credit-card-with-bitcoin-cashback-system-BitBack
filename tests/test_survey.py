@@ -174,3 +174,12 @@ def test_the_export_labels_every_row_with_its_cohort(client, db, monkeypatch, tm
     with open(out, newline="", encoding="utf-8") as f:
         cohorts = sorted(row["cohort"] for row in csv.DictReader(f))
     assert cohorts == ["legacy", "screened_out", "used_app"]
+
+
+def test_the_bare_domain_leads_to_the_survey(client):
+    """Visiting the server's root address used to answer "Not Found"."""
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code == 307
+    assert r.headers["location"] == "/survey/"
+    assert client.get("/").status_code == 200          # following it lands on the page
+    assert client.head("/", follow_redirects=False).status_code == 307

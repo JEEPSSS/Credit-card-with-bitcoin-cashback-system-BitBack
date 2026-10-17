@@ -14,7 +14,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -181,6 +181,14 @@ for router in ALL_ROUTERS:
 _SURVEY_DIR = Path(__file__).parent / "app" / "static" / "survey"
 if _SURVEY_DIR.exists():
     app.mount("/survey", StaticFiles(directory=_SURVEY_DIR, html=True), name="survey")
+
+
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+def root():
+    """The bare domain is the address people type or share, so send it to the
+    survey instead of answering "Not Found". The app never calls it: every
+    app request goes to /api/..., so this changes nothing for the app."""
+    return RedirectResponse("/survey/", status_code=307)
 
 
 # ------------------------------------------------------------------ errors
