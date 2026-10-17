@@ -2,6 +2,8 @@ import axios, { AxiosError } from "axios";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
+import { endsSession } from "./session";
+
 import type {
   AutoWithdrawConfig, BoostAdvice, Boosts, BtcPrice, Category, Forecast,
   FlaggedTransaction, FraudSummary, Goal, Insights, LeaderboardRow, LedgerEntry,
@@ -54,7 +56,8 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (r) => r,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    const sentToken = Boolean(error.config?.headers?.Authorization);
+    if (endsSession(error.response?.status, error.config?.url, sentToken)) {
       await tokenStore.clear();
       onUnauthorized?.();
     }
