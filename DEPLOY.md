@@ -21,10 +21,8 @@ is a field it asks for rather than assuming its own Postgres.
 plan — are noted at the bottom in case Neon's limits ever don't fit, but
 you shouldn't need them for a survey.)
 
-None of this can be done from the development session that built this feature —
-account creation, entering payment details, and clicking through a
-provider's dashboard all require you, not an agent. This is the exact
-sequence to run yourself.
+Complete account creation and dashboard configuration directly in your
+provider accounts. Follow the deployment sequence below.
 
 ## 1. Get the code somewhere Render can see it
 

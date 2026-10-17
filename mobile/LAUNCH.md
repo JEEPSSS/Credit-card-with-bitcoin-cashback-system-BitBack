@@ -8,9 +8,8 @@ institutional TestFlight access you're checking on; see the conversation
 that led here for why the free route (Expo Go) can't give iOS the same
 "anyone, anywhere, anytime" result Android gets.
 
-None of this can be run from the development session that prepared it — it
-needs your own Expo account (free, no credit card) and runs from your own
-machine. This is the exact sequence.
+Run these steps on your own machine using your Expo account (free, no
+credit card required). Follow the sequence below.
 
 ## One-time setup
 
