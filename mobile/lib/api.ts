@@ -3,6 +3,7 @@ import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
 import { endsSession } from "./session";
+import { WAKE_TIMEOUT_MS, ensureAwake, markAwake } from "./wake";
 
 import type {
   AutoWithdrawConfig, BoostAdvice, Boosts, BtcPrice, Category, Forecast,
@@ -48,14 +49,21 @@ export const tokenStore = {
 };
 
 api.interceptors.request.use(async (config) => {
+  // A free Render instance may be asleep; wake it with one patient check
+  // rather than letting this request time out at 12 s. See lib/wake.ts.
+  await ensureAwake(() => axios.get(`${BASE_URL}/api/health`, { timeout: WAKE_TIMEOUT_MS }));
   const token = await tokenStore.get();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    markAwake();
+    return r;
+  },
   async (error: AxiosError) => {
+    if (error.response) markAwake();   // an error reply still means it is awake
     const sentToken = Boolean(error.config?.headers?.Authorization);
     if (endsSession(error.response?.status, error.config?.url, sentToken)) {
       await tokenStore.clear();
@@ -76,7 +84,7 @@ api.interceptors.response.use(
     } else if (detail && typeof detail === "object" && "message" in detail) {
       friendly = String((detail as { message: unknown }).message);
     } else if (error.code === "ECONNABORTED" || !error.response) {
-      friendly = `Can't reach the server at ${BASE_URL}. Check it's running.`;
+      friendly = "Can't reach the server. Check your internet connection and try again.";
     } else {
       friendly = "Something went wrong. Try again.";
     }

@@ -8,6 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { AuthProvider } from "@/lib/auth";
 import { COLORS } from "@/lib/theme";
 import { RouteErrorBoundary } from "@/components/ErrorBoundary";
+import { WakeBanner } from "@/components/WakeBanner";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -38,6 +39,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
         </Stack>
+        <WakeBanner />
       </AuthProvider>
     </GestureHandlerRootView>
   );
