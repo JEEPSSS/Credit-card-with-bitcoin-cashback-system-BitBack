@@ -1,12 +1,13 @@
 import { useCallback, useState } from "react";
-import { View, Text, Pressable } from "react-native";
-import { Trash2 } from "lucide-react-native";
+import { Alert, View, Text, Pressable } from "react-native";
+import { Trash2 } from "@/components/icons";
 import { miscAPI } from "@/lib/api";
 import { usd } from "@/lib/format";
-import { useApi } from "@/lib/useApi";
-import { Button, Card, COLORS, Empty, ErrorNote, Header, Loading, Num, Screen } from "@/components/ui";
+import type { PriceAlert } from "@/lib/types";
+import { useAction, useApi } from "@/lib/useApi";
+import { Button, Card, COLORS, Empty, ErrorNote, Header, InlineError, Loading, Num, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
-import { fontSize, iconSize } from "@/lib/theme";
+import { MIN_TOUCH_TARGET, fontSize, iconSize } from "@/lib/theme";
 
 export default function Alerts() {
   const [price, setPrice] = useState("");
@@ -19,6 +20,29 @@ export default function Alerts() {
     }, []),
   );
 
+  // Both used to be bare awaits in onPress: a failure was an unhandled
+  // rejection and the screen simply did nothing.
+  const create = useAction(async () => {
+    await miscAPI.createAlert({ target_price: Number(price), direction });
+    setPrice("");
+    await state.reload();
+  });
+  const remove = useAction(async (id: number) => {
+    await miscAPI.deleteAlert(id);
+    await state.reload();
+  });
+
+  function confirmRemove(a: PriceAlert) {
+    Alert.alert(
+      "Delete this alert?",
+      `You won't be notified when bitcoin goes ${a.direction} ${usd(a.target_price)}.`,
+      [
+        { text: "Keep", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => void remove.run(a.id) },
+      ],
+    );
+  }
+
   if (state.error && !state.data) {
     return (
       <Screen>
@@ -30,22 +54,25 @@ export default function Alerts() {
   if (!state.data) return <Screen><Loading /></Screen>;
 
   const d = state.data;
-  const load = state.reload;
 
   return (
     <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
       <Header back title="Price alerts" subtitle={`Bitcoin is ${usd(d.btc.price)} right now.`} />
 
       <Card style={{ marginBottom: 24 }}>
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+        <View
+          style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Alert when bitcoin"
+        >
           {(["above", "below"] as const).map((dir) => (
             <Pressable
               key={dir}
               onPress={() => setDirection(dir)}
               accessibilityRole="radio"
-              accessibilityState={{ selected: direction === dir }}
+              accessibilityState={{ checked: direction === dir }}
               style={{
-                flex: 1, minHeight: 40, alignItems: "center", justifyContent: "center", borderRadius: 8,
+                flex: 1, minHeight: MIN_TOUCH_TARGET, alignItems: "center", justifyContent: "center", borderRadius: 8,
                 borderWidth: 1, borderColor: direction === dir ? COLORS.primary : COLORS.border,
                 backgroundColor: direction === dir ? COLORS.accentSurface : "transparent",
               }}
@@ -60,15 +87,19 @@ export default function Alerts() {
         <Button
           label="Create alert"
           disabled={!Number(price)}
-          onPress={async () => { await miscAPI.createAlert({ target_price: Number(price), direction }); setPrice(""); load(); }}
+          loading={create.busy}
+          onPress={() => void create.run()}
         />
+        <InlineError message={create.error} />
       </Card>
+
+      <InlineError message={remove.error} style={{ marginTop: 0, marginBottom: 12 }} />
 
       {d.alerts.length === 0 ? (
         <Empty title="No alerts set" body="You'll get a notification when bitcoin crosses your target." />
       ) : (
         <View style={{ backgroundColor: COLORS.card, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border }}>
-          {d.alerts.map((a: any, i: number) => (
+          {d.alerts.map((a: PriceAlert, i: number) => (
             <View
               key={a.id}
               style={{
@@ -85,7 +116,7 @@ export default function Alerts() {
                 </Text>
               </View>
               <Pressable
-                onPress={async () => { await miscAPI.deleteAlert(a.id); load(); }}
+                onPress={() => confirmRemove(a)}
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel={`Delete alert at ${usd(a.target_price)}`}

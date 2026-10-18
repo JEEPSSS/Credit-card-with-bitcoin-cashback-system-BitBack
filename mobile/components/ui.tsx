@@ -1,15 +1,16 @@
 import { ReactNode } from "react";
 import {
   ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text,
-  View, ViewStyle,
+  TextStyle, View, ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft } from "@/components/icons";
 import * as Haptics from "expo-haptics";
 
 import { COLORS, MIN_TOUCH_TARGET, font, fontSize, iconSize, radius, space } from "@/lib/theme";
 import type { AsyncState } from "@/lib/useApi";
+import { WakeBanner } from "@/components/WakeBanner";
 
 export { COLORS };
 
@@ -26,6 +27,7 @@ export function Screen({
   );
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
+      <WakeBanner />
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -58,7 +60,7 @@ export function Header({ title, subtitle, back }: { title: string; subtitle?: st
           <ChevronLeft size={iconSize.xl} color={COLORS.text} />
         </Pressable>
       )}
-      <Text style={styles.headerTitle}>{title}</Text>
+      <Text accessibilityRole="header" style={styles.headerTitle}>{title}</Text>
       {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
     </View>
   );
@@ -139,8 +141,9 @@ export function Num({
   return <Text style={[styles.num, { fontSize: size, color }]}>{children}</Text>;
 }
 
+/** Section heading. Marked as a header so screen readers can jump between sections. */
 export function Label({ children }: { children: ReactNode }) {
-  return <Text style={styles.label}>{children}</Text>;
+  return <Text accessibilityRole="header" style={styles.label}>{children}</Text>;
 }
 
 export function Divider() {
@@ -159,7 +162,7 @@ export function Empty({ title, body }: { title: string; body: string }) {
 export function Loading() {
   return (
     <View style={styles.loading}>
-      <ActivityIndicator color={COLORS.muted} />
+      <ActivityIndicator color={COLORS.muted} accessibilityLabel="Loading" />
     </View>
   );
 }
@@ -167,11 +170,27 @@ export function Loading() {
 export function ErrorNote({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <Card tone="danger">
-      <Text style={styles.errorText}>{message}</Text>
+      <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.errorText}>
+        {message}
+      </Text>
       {onRetry && (
         <Button label="Try again" variant="secondary" onPress={onRetry} style={{ marginTop: space.md }} />
       )}
     </Card>
+  );
+}
+
+/**
+ * A failure shown next to the control that caused it. Announced when it
+ * appears (WCAG 2.2 4.1.3, status messages): otherwise a screen reader user
+ * presses a button and hears nothing at all when it fails.
+ */
+export function InlineError({ message, style }: { message?: string | null; style?: TextStyle }) {
+  if (!message) return null;
+  return (
+    <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={[styles.inlineError, style]}>
+      {message}
+    </Text>
   );
 }
 
@@ -251,4 +270,5 @@ const styles = StyleSheet.create({
   },
   loading: { paddingVertical: 64, alignItems: "center" },
   errorText: { color: COLORS.text, fontSize: fontSize.caption, lineHeight: 20 },
+  inlineError: { color: COLORS.danger, fontSize: fontSize.caption, lineHeight: 20, marginTop: space.md },
 });

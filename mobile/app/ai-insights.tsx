@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { View, Text } from "react-native";
 import { router } from "expo-router";
-import * as Icons from "lucide-react-native";
+import { ShieldCheck } from "@/components/icons";
 import { aiAPI } from "@/lib/api";
 import { sats, titleCase, usd } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
@@ -40,12 +40,12 @@ export default function AIInsights() {
 
   return (
     <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
-      <Header back title="AI insights" subtitle="Five models running on your own spending history." />
+      <Header back title="AI insights" subtitle="Four models, each run on your own spending history." />
 
       <Card onPress={() => router.push("/fraud")} style={{ marginBottom: 12 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Icons.ShieldCheck size={iconSize.sm} color={COLORS.success} />
+            <ShieldCheck size={iconSize.sm} color={COLORS.success} />
             <Text style={{ color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium }}>Fraud protection</Text>
           </View>
           <Num size={fontSize.heading} color={COLORS.success}>{d.fraud.protection_score}</Num>
@@ -63,8 +63,8 @@ export default function AIInsights() {
             <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>sats</Text>
           </View>
           <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 6 }}>
-            {Math.round(d.forecast.interval_level * 100)}% likely between {sats(d.forecast.lower_bound)} and{" "}
-            {sats(d.forecast.upper_bound)} · trending {d.forecast.trend_direction}
+            Likely range {sats(d.forecast.lower_bound)} to {sats(d.forecast.upper_bound)} · trending{" "}
+            {d.forecast.trend_direction}
           </Text>
           <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
             <ModelBox
@@ -80,7 +80,9 @@ export default function AIInsights() {
           </View>
           <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 12, lineHeight: 18 }}>
             An even blend of the two: the average is steadier, smoothing reacts faster when your
-            spending changes.
+            spending changes. The range is set to contain the real figure{" "}
+            {Math.round(d.forecast.interval_level * 100)}% of the time. In testing it did for steady
+            spending, but only 70 to 74% of the time when spending was rising or falling.
           </Text>
         </Card>
       )}

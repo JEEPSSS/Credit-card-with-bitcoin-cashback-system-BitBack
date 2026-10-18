@@ -96,15 +96,16 @@ function Question({ children }: { children: string }) {
 function LikertRow({ value, onSelect }: { value: number | null; onSelect: (v: number) => void }) {
   return (
     <View>
-      <View style={{ flexDirection: "row", gap: space.sm }}>
+      <View style={{ flexDirection: "row", gap: space.sm }} accessibilityRole="radiogroup">
         {[1, 2, 3, 4, 5].map((v) => {
           const selected = value === v;
           return (
             <Pressable
               key={v}
               onPress={() => onSelect(v)}
-              accessibilityRole="button"
+              accessibilityRole="radio"
               accessibilityLabel={`${v} out of 5`}
+              accessibilityState={{ checked: selected }}
               style={{
                 flex: 1, aspectRatio: 1, minHeight: MIN_TOUCH_TARGET, borderRadius: radius.control,
                 borderWidth: 1, borderColor: selected ? COLORS.primary : COLORS.border,
@@ -131,6 +132,7 @@ function Choice({ label, selected, onPress }: { label: string; selected: boolean
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityState={{ selected }}
       style={{
         minHeight: MIN_TOUCH_TARGET, borderRadius: radius.control, borderWidth: 1,
         borderColor: selected ? COLORS.primary : COLORS.border,

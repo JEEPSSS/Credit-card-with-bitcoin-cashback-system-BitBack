@@ -54,8 +54,13 @@ export function ensureAwake(ping: () => Promise<unknown>, now: number = Date.now
   return inFlight;
 }
 
+/**
+ * Subscribe to waking state. A screen opened while a wake-up is already
+ * running is told so at once, rather than staying blank until the next one.
+ */
 export function onWakingChange(listener: Listener): () => void {
   listeners.add(listener);
+  if (inFlight) listener(true);
   return () => listeners.delete(listener);
 }
 

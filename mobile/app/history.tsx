@@ -93,6 +93,7 @@ export default function History() {
                 onPress={() => setFilter(item.category)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
+                hitSlop={{ top: 6, bottom: 6 }}
                 style={[
                   styles.chip,
                   {

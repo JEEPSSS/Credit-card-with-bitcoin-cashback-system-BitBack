@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
-import { ArrowUpRight, Bell, Flame, Sparkles, TrendingDown, TrendingUp } from "lucide-react-native";
+import { ArrowUpRight, Bell, Flame, Sparkles, TrendingDown, TrendingUp } from "@/components/icons";
 
 import { aiAPI, miscAPI, rewardsAPI, transactionAPI, walletAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -148,7 +148,11 @@ export default function Home() {
 
               <View style={styles.sectionHead}>
                 <Label>Recent activity</Label>
-                <Pressable onPress={() => router.push("/history")} hitSlop={10}>
+                <Pressable
+                  onPress={() => router.push("/history")}
+                  accessibilityRole="link"
+                  hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
+                >
                   <Text style={styles.seeAll}>See all</Text>
                 </Pressable>
               </View>

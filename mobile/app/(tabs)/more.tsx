@@ -1,42 +1,46 @@
 import { View, Text, Pressable, Linking } from "react-native";
 import { router } from "expo-router";
-import * as Icons from "lucide-react-native";
+import {
+  ChevronRight, ClipboardList, Clock, Coins, Gift, Lock, PartyPopper, Send, ShieldCheck, Sparkles,
+  Target, User, Bell,
+} from "@/components/icons";
 import { useAuth } from "@/lib/auth";
 import { BASE_URL } from "@/lib/api";
 import { Button, COLORS, Header, Label, Screen } from "@/components/ui";
-import { fontSize, iconSize } from "@/lib/theme";
+import { MIN_TOUCH_TARGET, fontSize, iconSize } from "@/lib/theme";
+import { BuildInfo } from "@/components/BuildInfo";
 
 const GROUPS = [
   {
     label: "Intelligence",
     items: [
-      { icon: "Sparkles", label: "AI insights", to: "/ai-insights", note: "All five models" },
-      { icon: "ShieldCheck", label: "Fraud protection", to: "/fraud", note: "Isolation Forest" },
+      { icon: Sparkles, label: "AI insights", to: "/ai-insights", note: "Four models" },
+      { icon: ShieldCheck, label: "Fraud protection", to: "/fraud", note: "Isolation Forest" },
     ],
   },
   {
     label: "Your money",
     items: [
-      { icon: "Target", label: "Savings goals", to: "/goals" },
-      { icon: "Coins", label: "Round-up", to: "/roundup" },
-      { icon: "Send", label: "Auto-withdraw", to: "/auto-withdraw" },
-      { icon: "Bell", label: "Price alerts", to: "/alerts" },
+      { icon: Target, label: "Savings goals", to: "/goals" },
+      { icon: Coins, label: "Round-up", to: "/roundup" },
+      { icon: Send, label: "Auto-withdraw", to: "/auto-withdraw" },
+      { icon: Bell, label: "Price alerts", to: "/alerts" },
     ],
   },
   {
     label: "Account",
     items: [
-      { icon: "User", label: "Profile and badges", to: "/profile" },
-      { icon: "Gift", label: "Referrals", to: "/referral" },
-      { icon: "Lock", label: "Security", to: "/security" },
-      { icon: "Clock", label: "Transaction history", to: "/history" },
-      { icon: "PartyPopper", label: "Monthly recap", to: "/recap" },
+      { icon: User, label: "Profile and badges", to: "/profile" },
+      { icon: Gift, label: "Referrals", to: "/referral" },
+      { icon: Lock, label: "Security", to: "/security" },
+      { icon: Clock, label: "Transaction history", to: "/history" },
+      { icon: PartyPopper, label: "Monthly recap", to: "/recap" },
     ],
   },
   {
     label: "Help us build this",
     items: [
-      { icon: "ClipboardList", label: "Product research survey", to: "/survey", note: "2 min, anonymous" },
+      { icon: ClipboardList, label: "Product research survey", to: "/survey", note: "2 min, anonymous" },
     ],
   },
 ];
@@ -51,7 +55,7 @@ export default function More() {
           <Label>{g.label}</Label>
           <View style={{ marginTop: 10, backgroundColor: COLORS.card, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border }}>
             {g.items.map((item, i) => {
-              const Icon = (Icons as any)[item.icon];
+              const Icon = item.icon;
               return (
                 <Pressable
                   key={item.to}
@@ -66,7 +70,7 @@ export default function More() {
                   <Icon size={iconSize.md} color={COLORS.muted} />
                   <Text style={{ color: COLORS.text, fontSize: fontSize.body, marginLeft: 12, flex: 1 }}>{item.label}</Text>
                   {(item as any).note && <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginRight: 8 }}>{(item as any).note}</Text>}
-                  <Icons.ChevronRight size={iconSize.sm} color={COLORS.muted} />
+                  <ChevronRight size={iconSize.sm} color={COLORS.muted} />
                 </Pressable>
               );
             })}
@@ -77,17 +81,23 @@ export default function More() {
       <Pressable
         onPress={() => router.push("/delete-account" as any)}
         accessibilityRole="button"
-        style={({ pressed }) => ({ alignItems: "center", paddingVertical: 16, marginTop: 8, opacity: pressed ? 0.6 : 1 })}
+        style={({ pressed }) => ({
+          alignItems: "center", justifyContent: "center", minHeight: MIN_TOUCH_TARGET, marginTop: 8,
+          opacity: pressed ? 0.6 : 1,
+        })}
       >
         <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>Delete account</Text>
       </Pressable>
       <Pressable
         onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}
         accessibilityRole="link"
-        style={({ pressed }) => ({ alignItems: "center", paddingVertical: 8, opacity: pressed ? 0.6 : 1 })}
+        style={({ pressed }) => ({
+          alignItems: "center", justifyContent: "center", minHeight: MIN_TOUCH_TARGET, opacity: pressed ? 0.6 : 1,
+        })}
       >
         <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>Privacy policy</Text>
       </Pressable>
+      <BuildInfo />
     </Screen>
   );
 }

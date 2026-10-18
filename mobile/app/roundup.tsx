@@ -1,9 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { View, Text, Switch, Pressable } from "react-native";
-import { configAPI } from "@/lib/api";
+import { configAPI, messageFor } from "@/lib/api";
 import type { RoundUpConfig } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { Card, COLORS, ErrorNote, Header, Label, Loading, Screen } from "@/components/ui";
+import { Card, COLORS, ErrorNote, Header, InlineError, Label, Loading, Screen } from "@/components/ui";
 import { font, fontSize } from "@/lib/theme";
 
 const OPTIONS = [
@@ -14,6 +14,7 @@ const OPTIONS = [
 
 export default function RoundUp() {
   const state = useApi(useCallback(() => configAPI.getRoundup(), []));
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   if (state.error && !state.data) {
     return (
@@ -27,20 +28,26 @@ export default function RoundUp() {
 
   const cfg = state.data;
 
-  /** Optimistic: flip the control immediately, roll back if the save fails. */
+  /**
+   * Optimistic: flip the control immediately, roll back if the save fails -
+   * and say so, or the switch just springs back with no reason given.
+   */
   const save = async (next: RoundUpConfig) => {
     const previous = cfg;
     state.setData(next);
+    setSaveError(null);
     try {
       state.setData(await configAPI.setRoundup(next));
-    } catch {
+    } catch (e) {
       state.setData(previous);
+      setSaveError(`Not saved. ${messageFor(e)}`);
     }
   };
 
   return (
     <Screen>
       <Header back title="Round-up" subtitle="Round every purchase up to the next dollar and convert the difference to sats." />
+      <InlineError message={saveError} style={{ marginTop: 0, marginBottom: 12 }} />
       <Card style={{ marginBottom: 20 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flex: 1, paddingRight: 16 }}>
@@ -61,7 +68,7 @@ export default function RoundUp() {
       {cfg.is_enabled && (
         <>
           <Label>Multiplier</Label>
-          <View style={{ gap: 8, marginTop: 12 }}>
+          <View style={{ gap: 8, marginTop: 12 }} accessibilityRole="radiogroup" accessibilityLabel="Multiplier">
             {OPTIONS.map((o) => {
               const active = cfg.multiplier === o.value;
               return (
@@ -69,7 +76,7 @@ export default function RoundUp() {
                   key={o.value}
                   onPress={() => save({ ...cfg, multiplier: o.value })}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
+                  accessibilityState={{ checked: active }}
                   style={{
                     flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 12,
                     backgroundColor: COLORS.card, borderWidth: 1,

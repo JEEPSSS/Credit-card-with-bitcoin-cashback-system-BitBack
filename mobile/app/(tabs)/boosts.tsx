@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 import { View, Text, Pressable, Modal } from "react-native";
-import * as Icons from "lucide-react-native";
 import { aiAPI, rewardsAPI } from "@/lib/api";
 import { pct, titleCase, usd } from "@/lib/format";
 import { useAction, useApi } from "@/lib/useApi";
 import type { BoostOption } from "@/lib/types";
-import { Button, Card, COLORS, ErrorNote, Header, Label, Loading, Num, Screen } from "@/components/ui";
-import { CATEGORY_ICON, font, fontSize, iconSize } from "@/lib/theme";
+import { Button, Card, COLORS, ErrorNote, Header, InlineError, Label, Loading, Num, Screen } from "@/components/ui";
+import { Flame, Sparkles, iconNamed } from "@/components/icons";
+import { CATEGORY_ICON, font, fontSize, iconSize, space } from "@/lib/theme";
 
 export default function Boosts() {
   const [confirm, setConfirm] = useState<string | null>(null);
@@ -23,6 +23,12 @@ export default function Boosts() {
     await state.reload();
     setConfirm(null);
   });
+
+  // A failure from the last attempt should not greet the next one.
+  const ask = (category: string) => {
+    activate.setError(null);
+    setConfirm(category);
+  };
 
   if (state.error && !state.data) {
     return (
@@ -44,7 +50,7 @@ export default function Boosts() {
       {boosts.active && (
         <Card style={{ marginBottom: 16, borderColor: COLORS.accentBorder }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Icons.Flame size={iconSize.sm} color={COLORS.primary} />
+            <Flame size={iconSize.sm} color={COLORS.primary} />
             <Text style={{ color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium }}>
               {titleCase(boosts.active.category)} at {boosts.active.multiplier}x
             </Text>
@@ -58,7 +64,7 @@ export default function Boosts() {
       {pick && (
         <Card style={{ marginBottom: 24 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Icons.Sparkles size={iconSize.sm} color={COLORS.primary} />
+            <Sparkles size={iconSize.sm} color={COLORS.primary} />
             <Label>Recommended for you</Label>
           </View>
           <Text style={{ color: COLORS.text, fontSize: fontSize.heading, fontFamily: font.medium, marginTop: 10 }}>
@@ -78,7 +84,7 @@ export default function Boosts() {
             </View>
           </View>
           {boosts.active?.category !== pick.category && (
-            <Button label={`Boost ${titleCase(pick.category)}`} onPress={() => setConfirm(pick.category)} style={{ marginTop: 16 }} />
+            <Button label={`Boost ${titleCase(pick.category)}`} onPress={() => ask(pick.category)} style={{ marginTop: 16 }} />
           )}
         </Card>
       )}
@@ -86,16 +92,20 @@ export default function Boosts() {
       <Label>All categories</Label>
       <View style={{ gap: 8, marginTop: 12 }}>
         {boosts.available.map((c: BoostOption) => {
-          const key = (CATEGORY_ICON as Record<string, string>)[c.category] ?? "credit-card";
-          const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[
-            key.split("-").map((p) => p[0].toUpperCase() + p.slice(1)).join("")
-          ] ?? Icons.CreditCard;
+          const Icon = iconNamed((CATEGORY_ICON as Record<string, string>)[c.category]);
           return (
             <Pressable
               key={c.category}
-              onPress={() => !c.is_active && setConfirm(c.category)}
+              onPress={() => ask(c.category)}
+              disabled={c.is_active}
               accessibilityRole="button"
-              accessibilityLabel={`Boost ${c.category}`}
+              // The visible rates were missing from the spoken name, and the
+              // active row looked tappable but did nothing.
+              accessibilityLabel={
+                `${titleCase(c.category)}: ${pct(c.base_rate, 1)} now, ${pct(c.boosted_rate, 1)} with a boost` +
+                (c.is_active ? ". Boost active" : "")
+              }
+              accessibilityState={{ disabled: c.is_active }}
               style={({ pressed }) => ({
                 flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12,
                 backgroundColor: COLORS.card, borderWidth: 1,
@@ -108,9 +118,17 @@ export default function Boosts() {
                 <Text style={{ color: COLORS.text, fontSize: fontSize.body }}>{titleCase(c.category)}</Text>
                 <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 2 }}>{c.description}</Text>
               </View>
+              {/* Before and after, joined by an arrow: two stacked rates told
+                  apart only by colour did not say which was which. */}
               <View style={{ alignItems: "flex-end" }}>
-                <Num size={fontSize.caption} color={COLORS.muted}>{pct(c.base_rate, 1)}</Num>
-                <Num size={fontSize.caption} color={COLORS.primary}>{pct(c.boosted_rate, 1)}</Num>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: space.xs }}>
+                  <Num size={fontSize.caption} color={COLORS.muted}>{pct(c.base_rate, 1)}</Num>
+                  <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>→</Text>
+                  <Num size={fontSize.caption} color={COLORS.primary}>{pct(c.boosted_rate, 1)}</Num>
+                </View>
+                {c.is_active ? (
+                  <Text style={{ color: COLORS.primary, fontSize: fontSize.caption, marginTop: 2 }}>Active</Text>
+                ) : null}
               </View>
             </Pressable>
           );
@@ -127,11 +145,7 @@ export default function Boosts() {
               You&apos;ll earn double sats in this category for 30 days.
               {boosts.active ? ` This replaces your ${boosts.active.category} boost.` : ""}
             </Text>
-            {activate.error ? (
-              <Text style={{ color: COLORS.danger, fontSize: fontSize.caption, marginTop: 12 }}>
-                {activate.error}
-              </Text>
-            ) : null}
+            <InlineError message={activate.error} />
             <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
               <Button label="Cancel" variant="ghost" onPress={() => setConfirm(null)} style={{ flex: 1 }} />
               <Button
