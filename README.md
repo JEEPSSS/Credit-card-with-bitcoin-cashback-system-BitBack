@@ -44,19 +44,22 @@ Scan the QR code with Expo Go. The app derives the API host from the address
 Expo is already serving on, so no configuration is needed on the same network.
 Override with `EXPO_PUBLIC_API_URL` to point at a deployed backend.
 
-Demo login: `demo@bitback.app` / `demo12345`
+Demo login: `demo@bitback.app` / `demo12345` (filled in automatically only in a development
+build; in the APK, type it in or create your own account)
 
 **Tests**
 
 ```bash
-pytest                    # 236 backend tests, each on its own in-memory database
+pytest                    # 239 backend tests, each on its own in-memory database
 TEST_DATABASE_URL=postgresql://... pytest   # the same suite on Postgres (+2 race tests)
 ruff check app main.py seed_demo.py tests evaluation scripts
-cd mobile && npm test     # 39 front-end tests
+cd mobile && npm test     # 54 front-end tests
 ```
 
 How the backend was hardened for production, with evidence for each finding:
-[docs/BACKEND_HARDENING.md](docs/BACKEND_HARDENING.md).
+[docs/BACKEND_HARDENING.md](docs/BACKEND_HARDENING.md). The app's audit against WCAG 2.2,
+Nielsen's heuristics, OWASP MASVS and Android core app quality, with what was fixed:
+[docs/APP_AUDIT.md](docs/APP_AUDIT.md).
 
 ## Layout
 
