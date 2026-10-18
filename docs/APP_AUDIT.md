@@ -29,27 +29,34 @@ w3.org, mas.owasp.org, docs.expo.dev, reactnative.dev, nngroup.com and gov.uk.
   with what was read here, and they added three checks this audit had missed:
   reading and focus order, focus not obscured (2.4.11), and the full EAS
   delivery chain. Those are now in sections 1, 4 and 6.
-- NN/g and GOV.UK were seen through search-result summaries only. Claims
-  taken from them are marked so and should be checked against the pages
-  before the report cites them.
+- NN/g and GOV.UK were seen here only through search results; the project
+  author later opened all three pages and supplied summaries (also in the
+  prompt pack's appendix), which sections 2 and 8 now rely on. Check the
+  quoted figures against the pages before the report cites them.
 
 **Accounts used.** To confirm S1, the demo account's credentials, which are
 published in the README, were used once to sign in on the live server; the
 returned token was not used for anything. No other account was accessed, and
-nothing destructive was run against the live server.
+nothing destructive was run against the live server. The device checks in
+section 10 used two disposable accounts made for the test, both deleted
+afterwards.
 
 **Evidence.** A result is *Pass* or *Fail* only with evidence: a file and line,
 a computed value, or a command and its output. Anything that needs a phone, a
 screen reader or a person to observe is *Unverified*, never Pass.
 
-**Severity.** Nielsen's 0-4 scale: 0 not a problem, 1 cosmetic, 2 minor,
-3 major, 4 catastrophe.
+**Severity.** The 0-4 scale from Nielsen's severity ratings for usability
+problems: 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 catastrophe. It
+comes from his separate article on severity ratings, which was not opened
+here; NN/g's article on conducting a heuristic evaluation prescribes no
+numbered scale.
 
 **Limits of the method.** One evaluator, reading code, with no device. A
 heuristic evaluation by one person finds a fraction of the problems several
-independent evaluators would (NN/g recommends several evaluators working
-independently, then pooling; seen via search summary only), and the source is
-explicit that it does not replace testing with users. MASTG says the same of
+independent evaluators would: NN/g recommends three to five, each working
+alone before findings are combined (Moran and Gordon, 2023, from a summary of
+the page supplied by the project author), and is explicit that heuristic
+review complements user research rather than replacing it. MASTG says the same of
 security: the controls below were checked by reading the code (static
 review), not by testing the installed app, so none of this is a claim that the
 app complies with MASVS.
@@ -75,13 +82,14 @@ app complies with MASVS.
 | A6 | Accessibility | WCAG 1.3.5; Android Autofill_Hints | No autofill hints on email, password, name or one-time-code fields | 2 | Fixed |
 | A7 | Accessibility | WCAG 1.3.1 | No screen headings exposed as headings | 1 | Fixed |
 | A8 | Accessibility | WCAG 4.1.2 | Sign-in links and "See all" had no role | 1 | Fixed |
-| A9 | Accessibility | Android Touch_Target_Size (48 dp) | Chips, presets, period tabs and text links 33-41 dp tall | 1 | Fixed: 48 dp touch area |
+| A9 | Accessibility | Android Touch_Target_Size (48 dp) | Chips, presets, period tabs and text links 33-41 dp tall | 1 | Fixed: 48 dp touch area. A device measurement then found the History "All" chip 45.7 dp wide; fixed with a 48 dp minimum width |
 | U1 | Usability | Nielsen #1 | "Copy key" gave no sign it had copied | 1 | Fixed |
 | U2 | Usability | Nielsen #9 | Invalid amount left a greyed-out button with no reason | 1 | Fixed |
 | R1 | Release | EAS Update debugging | No way to see on a phone which update it runs | 2 | Fixed: build info on More |
 | A10 | Accessibility | WCAG 2.4.11; Nielsen #3 | While the server wakes (up to a minute) the banner covers the top of every screen and takes taps on most of the back button and the notification bell | 2 | Fixed: the banner sits in the page and pushes content down |
 | C3 | Security | MASVS-CODE-3 | `npm audit`: 43 advisories (25 high, 18 moderate) | 2 | Not fixed: needs an Expo SDK major upgrade |
 | D1 | Design | Android Theme_Support | Dark theme only | 1 | Not fixed: documented |
+| M1 | Privacy | MASVS-PRIVACY-1; Android Minimize_Permissions | The APK requests five permissions the app never uses: read and write external storage, draw over other apps, biometric and fingerprint | 1 | Open: needs `blockedPermissions` in `app.json` and a new APK |
 
 Two problems were rated severity 3 (S1 and E1) and none severity 4; both are
 fixed in the app. A10 was found afterwards and fixed in a separate commit.
@@ -137,11 +145,11 @@ tokens") so a token change cannot silently fail them.
 | 1.3.2 Meaningful sequence; 2.4.3 Focus order | Pass by code; Unverified | Screen readers follow the order of the component tree, and on every screen it matches the visual order. Two things are positioned on top of other content: the unread dot on the bell (inside the bell's labelled button) and the wake banner (last in the tree, so reached last, but announced as it appears). Needs a TalkBack pass. |
 | 2.4.11 Focus not obscured (minimum) | **Fixed (A10)**; rest Unverified | `components/WakeBanner.tsx` was drawn over the top of the screen, from about 8 to 44 pt below the safe-area inset, for as long as the server takes to wake. It set no `pointerEvents`, so it also took the touches on that strip, which covers most of the back button (8-56 pt) and of the Home bell. It is now the first thing inside each screen (`Screen` in `components/ui.tsx`, and the start screen), so it pushes the content down instead of covering it, and only the screen in front shows it. A screen opened during a wake-up is told at once (`lib/wake.ts`, tested). Whether the keyboard hides inputs in the bottom sheets (new goal, add sats) needs a phone. |
 | 2.5.8 Target size (minimum), 24×24 | Pass, from styles | Smallest was the privacy link, about 33 pt tall by its padding and line height; not measured on a device. WCAG states this in CSS pixels; treating them as dp or pt on a phone is the usual reading for native apps, not something WCAG itself says. |
-| Android Touch_Target_Size, 48 dp | **Fixed (A9)** | 40 pt chips, presets and period tabs get 4 pt of hit area above and below (`CONTROL_HIT_SLOP`); history chips 6 pt; sign-in links, privacy and delete-account links a 48 pt minimum height; alert direction toggles 48 pt. |
+| Android Touch_Target_Size, 48 dp | **Fixed (A9)**, measured | 40 pt chips, presets and period tabs get 4 pt of hit area above and below (`CONTROL_HIT_SLOP`); history chips 6 pt; sign-in links, privacy and delete-account links a 48 pt minimum height; alert direction toggles 48 pt. Measured on an emulator at 420 dpi: $5 preset 69.3 × 40 dp (48 with hit area), Bills category 108.6 × 40 (48), Privacy policy 379.4 × 48, History "All" 45.7 × 36.2 (48.2 tall with hit area, but 45.7 wide). The History chips now have a 48 dp minimum width (`app/history.tsx`); remeasure after the next update. |
 | 3.3.1 Error identification | **Fixed (E1)** | See section 2. Field errors are now red, read with the field (`accessibilityHint`) and announced. |
 | 3.3.4 Error prevention (data) | **Fixed (E3)** | Deleting a goal or alert asks first; the goal prompt says how many sats return to the wallet. Transactions already showed a preview before "Confirm"; account deletion already asked and required the password. |
 | 3.3.8 Accessible authentication | Pass | No cognitive test; paste allowed into the password and code fields; autofill now possible. |
-| 4.1.2 Name, role, value | **Fixed (A3, A8)** | Radios used `selected`, which a radio does not report, so TalkBack read every option as unchecked; now `checked`, inside a `radiogroup` (transact, alerts, round-up, survey). Survey choices and Likert options now report their state. Sign-in links and "See all" now have the link role. |
+| 4.1.2 Name, role, value | **Fixed (A3, A8)** | Radios used `selected`, which a radio does not report, so TalkBack read every option as unchecked; now `checked`, inside a `radiogroup` (transact, alerts, round-up, survey). Survey choices and Likert options now report their state. Sign-in links and "See all" now have the link role. On the emulator, the Transact categories appear in the accessibility tree as native radio buttons with their checked state; what TalkBack says aloud was not observed. |
 | 4.1.3 Status messages | **Fixed (E2)** | `ErrorNote` and the new `InlineError` are announced when they appear (`accessibilityRole="alert"`, live region). |
 
 ## 2. Usability: Nielsen's ten heuristics
@@ -193,15 +201,17 @@ and `evaluation/results.json`.
 | AUTH-1 secure authentication | Pass in app; see S1 | Server-side controls are in BACKEND_HARDENING.md. The shared demo account (S1) was the app's part of the problem. An expired session is told apart from a network failure: only a 401 on a request that carried a token, outside the sign-in endpoints, signs the user out; a timeout or no connection shows "Can't reach the server" and keeps the session (`lib/session.ts`, 5 tests). |
 | AUTH-2 local authentication | Not implemented | No biometric unlock. Android core app quality lists Biometric_Authentication for apps that protect financial data: a recommendation for a real card product. |
 | AUTH-3 additional authentication for sensitive operations | Pass | Deleting the account re-asks for the password; turning off 2FA asks for a code. |
-| NETWORK-1 secures all traffic | Pass for release builds; Unverified on the APK | The release profile sets an `https://` API URL (`eas.json`). The `http://` fallback is only for a development server on the LAN. No network security config is declared; checking the built manifest for cleartext settings needs the APK. |
+| NETWORK-1 secures all traffic | Pass, APK checked | The release profile sets an `https://` API URL (`eas.json`). The `http://` fallback is only for a development server on the LAN. The APK's manifest has no `usesCleartextTraffic`, so with target SDK 36 Android refuses plain HTTP by default. No network security config is declared. |
 | NETWORK-2 identity pinning | Not implemented | Would need a native module and a new build. |
-| PLATFORM-1, -2 IPC, links and WebViews | Pass, one note | No WebView; the privacy policy opens in the browser. The app's `bitback://` scheme lets any link open any screen, including `reset-password?token=…`. A link from someone else can only carry a token for their own account, and the server makes each token single-use, so the worst case is setting a password on the sender's account (severity 1, recorded rather than changed). |
+| PLATFORM-1, -2 IPC, links and WebViews | Pass, two notes | No WebView; the privacy policy opens in the browser. Exported components in the APK: the launcher activity, Android's profile-installer receiver (guarded by the DUMP permission), and the clipboard library's file provider, which the library itself declares exported; it shares only a `.clipboard/` cache folder that this app never writes to, since it copies text only. The app's `bitback://` scheme lets any link open any screen, including `reset-password?token=…`. A link from someone else can only carry a token for their own account, and the server makes each token single-use, so the worst case is setting a password on the sender's account (severity 1, recorded rather than changed). |
 | PLATFORM-3 secure UI | Partial | The 2FA secret and backup codes can be screenshotted. Blocking that needs a native module and a new build. |
+| CODE-1 up-to-date platform | Pass, APK checked | Target SDK 36, minimum SDK 24. |
 | CODE-2 enforces updates | Partial | EAS Update fetches new JavaScript on launch; nothing forces a new binary. |
 | CODE-3 no known-vulnerable components | **Fail, not fixed (C3)** | `npm audit --omit=dev`: 43 advisories, 25 high and 18 moderate, no critical. Nearly all are build tools (Metro, Jest, Babel, `node-forge` used for code signing). The ones inside the shipped bundle are `decode-uri-component` and `query-string`, through expo-router (denial of service from a malformed link). Every fix npm offers is a major Expo upgrade (SDK 58), which needs a new native build: after submission, not before. A full `npm audit`, which also counts the test tools, showed 49 including 2 critical, all six extra in `vitest` and its `tinypool` worker pool: none of their modules are among the 2,346 in the shipped bundle. Upgrading `vitest` 2.1.9 → 4.1.12 cleared all six; both counts are now 43, none critical. |
 | CODE-4 validates input | Pass | Amounts are parsed and checked before sending; the server validates everything (BACKEND_HARDENING.md). |
 | RESILIENCE-1 to -4 | Out of scope | MASVS-R is for apps that must resist tampering; a prototype with simulated money is not one. |
-| PRIVACY-1, -2 | Pass in config; APK Unverified | `app.json` requests no permissions and the code reads no device identifiers. Libraries can add permissions to the built manifest; that was not inspected. |
+| PRIVACY-1 minimises access | **Fail, not fixed (M1)**, APK checked | `app.json` requests none, but the APK asks for nine: internet, network state and vibration, which the app uses, and read and write external storage, draw over other apps, biometric, fingerprint and a library-internal receiver permission. The storage permissions come from Expo's file-system module, the rest from the build template and libraries; nothing in the app uses them. `android.blockedPermissions` in `app.json` removes them, in the next APK. |
+| PRIVACY-2 prevents identification | Pass | The code reads no device identifiers. |
 | PRIVACY-3 transparency | Pass | A privacy page is linked from More (`/privacy`). |
 | PRIVACY-4 user control | Pass | The account can be deleted in the app. |
 
@@ -244,6 +254,11 @@ screen imported it. Whether that is visible as startup time on a phone was
   show progress if loading takes over two seconds. Pass by design: the splash
   holds until fonts load, the start route shows a spinner, and the wake banner
   explains the up-to-60-second cold start of the free server.
+- Measured before the audit update, signed out, cold launches 10 s apart on
+  an Android emulator: TotalTime 1921, 775, 730, 728, 903 ms, median 775 ms.
+  The first run is the slowest, as expected for a first cold start. The same
+  measurement after the update has not been taken yet, so no effect of the
+  bundle reduction on startup is claimed.
 
 ### React Native guidance
 
@@ -267,7 +282,8 @@ the fix; it is a larger change than this audit.
 | Print the `expo-updates` constants to see what a build is running | Not possible before | **Fixed (R1)**: the foot of More shows version, runtime, channel and update ID with date, or says the build is running its built-in code, or that an update failed and was rolled back (`components/BuildInfo.tsx`, `lib/build.ts`, 4 tests) |
 | Updates that crash before the first screen renders are rolled back automatically | A crash inside one screen is not rolled back | The route error boundary (`components/ErrorBoundary.tsx`) catches those instead |
 | `updates.url` must point at the right EAS project | `u.expo.dev/9552e0f8-…` matches `extra.eas.projectId` (`app.json`) | Pass |
-| The channel must be linked to the branch the update was published to; the newest compatible update on that branch is the one delivered | Not visible from the repository | Unverified: `eas channel:view preview` shows the link and its latest update |
+| The channel must be linked to the branch the update was published to; the newest compatible update on that branch is the one delivered | `preview` channel → `preview` branch | Pass (checked with `eas channel:view preview`) |
+| Record the update running on the device | Update group `3a279f26-5c2d-474f-ad1e-d9ab116527f4`, Android update `01a14f60…`, published 18 October 2026; the emulator's More screen showed "Runtime 1.0.0 · channel preview" and "Update 01a14f60" | Pass: delivered and running |
 | Delivery is not proof that screens work | - | After an update, compare the update ID on More with the one `eas update` printed, then smoke-test sign-in, Home, Boosts, AI insights, Fraud protection and Security on the Android APK (runtime 1.0.0) |
 
 Every change in this audit is JavaScript and assets only. The app version, and
@@ -278,27 +294,34 @@ delivers it to the existing APK without a new build.
 
 | Item | Result | Evidence |
 |------|--------|----------|
-| Touch_Target_Size (48 dp) | Fixed | A9 |
+| Touch_Target_Size (48 dp) | Fixed; one miss found on device and fixed | A9 |
 | Visual_Contrast | Fixed | A1, A2 |
 | Content_Description | Pass | 1.1.1 above |
 | Back_Button_Nav | Pass by code | Stack navigation handles system back; every modal sets `onRequestClose` |
 | State_Preservation | Unverified | Needs a process-death test on a phone |
 | Theme_Support (light and dark) | **Fail, not fixed (D1)** | Dark only (`app.json` `userInterfaceStyle: "dark"`): a design decision, recorded as a limitation |
-| App_Startup_Time | Pass by design; time Unverified | Section 5 |
+| App_Startup_Time | Pass by design; median cold start 775 ms before the update | Section 5 |
 | Sensitive_Data_Logging | Pass | No logging in app code |
 | Autofill_Hints | Fixed | A6 |
 | Network_Security_Configuration | Not declared | Needs a config plugin and a new build |
 | Biometric_Authentication | Not implemented | MASVS-AUTH-2 above |
-| Minimize_Permissions | Pass in config; APK Unverified | None requested in `app.json`; the merged manifest of the APK was not inspected |
+| Minimize_Permissions | **Fail (M1)**, APK checked | Five unused permissions in the APK; see PRIVACY-1 |
+| Target_SDK_Version | Pass, APK checked | 36 |
 
 ## 8. What needs real users
 
 A code audit cannot say whether people understand the app. The source
-(GOV.UK, moderated usability testing; seen via search summary) describes
-sessions of 30 to 60 minutes, no more than six one-hour sessions a day, and
-participants who are actual or likely users. A plan that fits the time left:
+(GOV.UK, moderated usability testing, from a summary supplied by the project
+author) says sessions usually take 30 to 60 minutes, with no more than six
+one-hour sessions a day and at least 15 minutes between them. It asks for
+actual or likely users, believable goals that do not give away the answer,
+neutral instructions and mostly quiet observation, with thinking aloud
+encouraged. It gives no participant count and no formal consent procedure.
+A plan that fits the time left (the numbers are this project's choice, not
+GOV.UK's):
 
-1. Five participants who are curious about bitcoin but do not hold it.
+1. Five participants who are curious about bitcoin but do not hold it, each
+   asked for informed consent before any recording.
 2. Six tasks, read aloud as scenarios, not instructions: sign up; make a
    purchase and explain the reward; pick a boost; create a goal and move sats
    into it; find out why a transaction was flagged; delete the account.
@@ -316,6 +339,7 @@ participants who are actual or likely users. A plan that fits the time left:
 | S1, server side: protect the demo account | Backend change; deploys to the live server | Approval to deploy; a guard on 2FA, password change and deletion for that one email |
 | D1: no light theme | Design scope | A second palette, and every screen checked in both |
 | NETWORK-2, PLATFORM-3, biometrics, network security config | Native modules or config plugins | A new APK |
+| M1: five unused permissions | Removing them changes the native manifest | `android.blockedPermissions` in `app.json`, then a new APK |
 | Home screen requests | Larger refactor | A query cache |
 | Startup, scroll and screen-reader behaviour | No device here | The checks in section 10 |
 
@@ -335,7 +359,27 @@ else's.
 | 5 | Startup | APK installed, app force-stopped | `adb shell am start -S -W app.bitback.mobile/.MainActivity`, five times | Record TotalTime; compare with the APK built before this change |
 | 6 | Update delivery | `eas update --channel preview` run | Open the app twice; read the build line on More | The update ID matches the one published; runtime 1.0.0, channel preview |
 | 7 | Offline | Airplane mode | Open each data screen, pull to refresh | A retryable error, never an endless spinner or a sign-out |
-| 8 | Session expiry | Signed in on the phone; reset the same test account's password with Forgot password on another device | Return to the app and refresh | Sent to sign-in; a network failure (check 7) does not do this |
+| 8 | Session expiry | Signed in on the phone with a disposable account; delete that account through the API from a terminal (the live server does not hand out reset tokens) | Return to the app and refresh | Sent to sign-in; a network failure (check 7) does not do this |
+
+### Results so far (18 October 2026, Android emulator, 420 dpi)
+
+Run against the published update. A smoke test came first: empty sign-in
+fields, sign-up, a $25 purchase (308 sats), the invalid-amount message, boost
+confirmation, "Four models", the protection-score caption, goal and alert
+delete confirmations, "Copied" on the 2FA key, and deleting the account all
+passed. The forecast card could not be checked, because a new account has no
+history to forecast from.
+
+| # | Result | Evidence and note |
+|---|--------|-------------------|
+| 1 | Partly verified | The banner sat above the content; tapping the bell and back while it showed was not tried |
+| 2 | Partly verified | Accessibility tree on Transact: native radio buttons with checked state. TalkBack speech not observed |
+| 3 | Not run | Testing stopped at the touch-target failure |
+| 4 | Inconclusive | The fields stayed visible, but the emulator used a compact keyboard, so the full-height keyboard case was not exercised |
+| 5 | Before only | Median 775 ms; after not measured |
+| 6 | Pass | Update `01a14f60` running, runtime 1.0.0, channel preview |
+| 7, 8 | Not run | - |
+| Touch targets | **Fail, then fixed** | History "All" 45.7 dp wide; see 2.5.8 and A9 |
 
 ## Tests added
 
@@ -366,10 +410,10 @@ Primary sources, as recommended for citation:
   <https://www.nngroup.com/articles/ten-usability-heuristics/>.
 - NN/g, *How to Conduct a Heuristic Evaluation*:
   <https://www.nngroup.com/articles/how-to-conduct-a-heuristic-evaluation/>
-  (search summary only).
+  (K. Moran and K. Gordon, 2023; summary supplied by the project author).
 - GOV.UK Service Manual, *Using moderated usability testing*:
   <https://www.gov.uk/service-manual/user-research/using-moderated-usability-testing>
-  (search summary only).
+  (summary supplied by the project author).
 - OWASP, *Mobile Application Security Verification Standard*:
   <https://mas.owasp.org/MASVS/>; control texts read from
   <https://github.com/OWASP/owasp-masvs>.
