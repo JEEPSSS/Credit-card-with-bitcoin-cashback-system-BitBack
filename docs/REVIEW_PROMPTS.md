@@ -97,7 +97,10 @@ and do not report MASVS compliance from a static review alone.
 Perform a heuristic evaluation of every screen in mobile/app/ against Nielsen's 10
 usability heuristics (nngroup.com/articles/ten-usability-heuristics), following
 NN/g's method (nngroup.com/articles/how-to-conduct-a-heuristic-evaluation): two
-passes - the flow first, then each element - and severity ratings.
+passes - the task first, then each element. Rate severity on Nielsen's 0-4 scale,
+which comes from his separate article on severity ratings; the method article
+prescribes no numbered scale. NN/g recommends three to five evaluators working
+independently; say that one AI reviewer is one evaluator.
 
 For each screen list: what the user is trying to do, every violation (heuristic,
 severity 0-4, file:line, what the user sees), and the fix. Pay particular attention to:
@@ -469,6 +472,88 @@ untested behaviour as passed. Present the audit before changing
 anything.
 ```
 
-No summaries are held yet for NN/g (heuristics, heuristic evaluation method) or
-GOV.UK (moderated usability testing); those two pages were only seen through
-search results.
+### NN/g: 10 Usability Heuristics ([nngroup.com](https://www.nngroup.com/articles/ten-usability-heuristics/))
+
+```text
+Author: Jakob Nielsen.
+Published: April 24, 1994.
+The page displays January 30, 2024 as "Last reviewed";
+no separate last-updated date is provided.
+
+Exact heuristic names:
+1. Visibility of System Status
+2. Match Between the System and the Real World
+3. User Control and Freedom
+4. Consistency and Standards
+5. Error Prevention
+6. Recognition Rather than Recall
+7. Flexibility and Efficiency of Use
+8. Aesthetic and Minimalist Design
+9. Help Users Recognize, Diagnose, and Recover from Errors
+10. Help and Documentation
+
+These are broad principles requiring contextual judgement.
+
+For BitBack: assess loading feedback, understandable model
+explanations, consistent controls, confirmations, visible choices
+and useful error recovery.
+
+This is a summary, not a reproduction of the page.
+```
+
+### NN/g: How to Conduct a Heuristic Evaluation ([nngroup.com](https://www.nngroup.com/articles/how-to-conduct-a-heuristic-evaluation/))
+
+```text
+Authors: Kate Moran and Kelley Gordon.
+Published: June 25, 2023.
+
+Guidance:
+- Ideally, "three to five people" evaluate independently because
+  individual reviewers miss different problems.
+- Reviewers should understand the heuristics before starting.
+- Keep scope manageable; reserve about "1-2 hours".
+- Do not expose colleagues' findings before independent reviews
+  are complete.
+- First complete the task to become familiar with the product;
+  make a second pass to identify heuristic violations.
+- Consolidate findings afterwards, discussing disagreement,
+  impact, priorities and questions requiring further research.
+- This page does not prescribe a numbered severity-rating scale.
+  Do not attribute the project's 0-4 scale to this article.
+- Heuristic reviews complement rather than replace user research.
+  Context can justify apparent violations.
+
+For BitBack: ask classmates to independently review selected
+Android journeys, combine findings, then validate uncertain
+issues with actual testers.
+
+This is a summary, not a reproduction of the page.
+```
+
+### GOV.UK: Using moderated usability testing ([gov.uk](https://www.gov.uk/service-manual/user-research/using-moderated-usability-testing))
+
+```text
+Guidance:
+- Sessions usually take between "30 and 60 minutes".
+- Plan no more than "6 one-hour sessions a day", with
+  "at least 15 minutes" between sessions, plus lunch.
+- This page does not specify a participant count.
+- Recruit actual or likely users and accommodate access needs.
+- Set believable, relevant goals without revealing solutions.
+  Present tasks in a logical order.
+- Prepare and pilot a discussion guide.
+- Explain the research and recording arrangements; a formal
+  consent procedure is not specified on this page.
+- Reassure participants that the service is being tested.
+- Give neutral instructions, invite thinking aloud and mostly
+  observe quietly. Clarify behaviour or help participants recover
+  when completely stuck.
+- Allow follow-up questions and store personal data securely.
+- A detailed analysis procedure is not prescribed.
+
+For BitBack: use simulated accounts and realistic scenarios.
+Obtain informed consent before recording. As a project-specific
+analysis step, group observed difficulties and prioritise fixes.
+
+This is a summary, not a reproduction of the page.
+```

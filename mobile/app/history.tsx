@@ -8,7 +8,8 @@ import { messageFor, miscAPI, transactionAPI } from "@/lib/api";
 import { sats, titleCase } from "@/lib/format";
 import { toSections } from "@/lib/statement";
 import {
-  COLORS, MIN_CONTROL_HEIGHT, categoryColor, font, fontSize, radius, space, tracking,
+  COLORS, MIN_CONTROL_HEIGHT, MIN_TOUCH_TARGET, categoryColor, font, fontSize, radius, space,
+  tracking,
 } from "@/lib/theme";
 import type { Category, Transaction } from "@/lib/types";
 import { ReceiptRow } from "@/components/ReceiptRow";
@@ -177,10 +178,15 @@ const styles = StyleSheet.create({
   gutter: { paddingHorizontal: space.lg },
   filterRail: { flexGrow: 0 },
   filterContent: { paddingHorizontal: space.lg, gap: space.sm, paddingBottom: space.lg },
+  // Short labels such as "All" made a chip narrower than a 48 dp touch;
+  // measured at 45.7 dp on a device. The extra touch area is added only
+  // above and below (hitSlop), because the chips sit side by side.
   chip: {
     minHeight: MIN_CONTROL_HEIGHT - 4,
+    minWidth: MIN_TOUCH_TARGET,
     paddingHorizontal: space.md + 2,
     borderRadius: radius.pill,
+    alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
   },
