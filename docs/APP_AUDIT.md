@@ -14,12 +14,29 @@ not repeated here. The prompts that drive an audit like this one are in
 
 **How each source was read.** This environment's network policy blocked
 w3.org, mas.owasp.org, docs.expo.dev, reactnative.dev, nngroup.com and gov.uk.
-The W3C, OWASP, Expo and React Native pages were read from the
-repositories they are published from (w3c/wcag, OWASP/owasp-masvs,
-OWASP/owasp-mastg, expo/expo, facebook/react-native-website), and
-developer.android.com directly. The NN/g and GOV.UK pages could only be seen
-through search-result summaries; claims taken from them are marked so, and
-should be checked against the pages before the report cites them.
+
+- Read in full from the repositories they are published from: the MASVS
+  control statements and the MASTG overview (OWASP/owasp-masvs,
+  OWASP/owasp-mastg), Expo's EAS Update debugging page (expo/expo) and React
+  Native's performance page (facebook/react-native-website).
+- W3C: only the Understanding document for 2.5.8 was read (w3c/wcag). The
+  other success criteria were applied from the WCAG 2.2 Recommendation as
+  known, not re-read here.
+- developer.android.com was read directly.
+- After the audit, the project author opened the WCAG 2.2, MASVS, MASTG and
+  EAS Update pages and supplied summaries of them (kept in
+  [REVIEW_PROMPTS.md](REVIEW_PROMPTS.md#appendix-source-summaries)). They agree
+  with what was read here, and they added three checks this audit had missed:
+  reading and focus order, focus not obscured (2.4.11), and the full EAS
+  delivery chain. Those are now in sections 1, 4 and 6.
+- NN/g and GOV.UK were seen through search-result summaries only. Claims
+  taken from them are marked so and should be checked against the pages
+  before the report cites them.
+
+**Accounts used.** To confirm S1, the demo account's credentials, which are
+published in the README, were used once to sign in on the live server; the
+returned token was not used for anything. No other account was accessed, and
+nothing destructive was run against the live server.
 
 **Evidence.** A result is *Pass* or *Fail* only with evidence: a file and line,
 a computed value, or a command and its output. Anything that needs a phone, a
@@ -62,11 +79,12 @@ app complies with MASVS.
 | U1 | Usability | Nielsen #1 | "Copy key" gave no sign it had copied | 1 | Fixed |
 | U2 | Usability | Nielsen #9 | Invalid amount left a greyed-out button with no reason | 1 | Fixed |
 | R1 | Release | EAS Update debugging | No way to see on a phone which update it runs | 2 | Fixed: build info on More |
+| A10 | Accessibility | WCAG 2.4.11; Nielsen #3 | While the server wakes (up to a minute) the banner covers the top of every screen and takes taps on most of the back button and the notification bell | 2 | **Open**: fix proposed below, not applied |
 | C3 | Security | MASVS-CODE-3 | `npm audit`: 43 advisories (25 high, 18 moderate) | 2 | Not fixed: needs an Expo SDK major upgrade |
 | D1 | Design | Android Theme_Support | Dark theme only | 1 | Not fixed: documented |
 
 Two problems were rated severity 3 (S1 and E1) and none severity 4; both are
-fixed in the app.
+fixed in the app. A10 was found afterwards and is open.
 
 ## 1. Accessibility: WCAG 2.2 AA and Android accessibility
 
@@ -116,7 +134,9 @@ tokens") so a token change cannot silently fail them.
 | 1.4.1 Use of colour | **Fixed (A4)** | Boost rows showed the base and boosted rates as two stacked numbers, grey and orange. Now "1.5% → 3.0%" with an "Active" label (`app/(tabs)/boosts.tsx`). Price change, risk bands and password strength already had text. |
 | 1.4.4 Resize text | **Fixed (A5)**; rest Unverified | The odometer sized its digit window from the unscaled font, so system text scaling clipped the balance. Now `scaledLineHeight` (theme) grows the window with `fontScale`, capped at 1.6× with the text held to the same cap; tested. Other fixed-height text (tab bar labels) needs checking on a phone at 200%. |
 | 2.3.3 Animation from interactions | Pass (AAA, beyond the AA target) | Odometer, skeleton and survey honour reduce-motion (`lib/useReducedMotion.ts`); Reanimated layout animations follow the system setting by default. |
-| 2.5.8 Target size (minimum), 24×24 | Pass, from styles | Smallest was the privacy link, about 33 pt tall by its padding and line height; not measured on a device. |
+| 1.3.2 Meaningful sequence; 2.4.3 Focus order | Pass by code; Unverified | Screen readers follow the order of the component tree, and on every screen it matches the visual order. Two things are positioned on top of other content: the unread dot on the bell (inside the bell's labelled button) and the wake banner (last in the tree, so reached last, but announced as it appears). Needs a TalkBack pass. |
+| 2.4.11 Focus not obscured (minimum) | **Fail (A10)**; rest Unverified | `components/WakeBanner.tsx` is drawn over the top of the screen, from about 8 to 44 pt below the safe-area inset, for as long as the server takes to wake. It sets no `pointerEvents`, so it also takes the touches on that strip, which covers most of the back button (8-56 pt) and of the Home bell. Whether the keyboard hides inputs in the bottom sheets (new goal, add sats) needs a phone. |
+| 2.5.8 Target size (minimum), 24×24 | Pass, from styles | Smallest was the privacy link, about 33 pt tall by its padding and line height; not measured on a device. WCAG states this in CSS pixels; treating them as dp or pt on a phone is the usual reading for native apps, not something WCAG itself says. |
 | Android Touch_Target_Size, 48 dp | **Fixed (A9)** | 40 pt chips, presets and period tabs get 4 pt of hit area above and below (`CONTROL_HIT_SLOP`); history chips 6 pt; sign-in links, privacy and delete-account links a 48 pt minimum height; alert direction toggles 48 pt. |
 | 3.3.1 Error identification | **Fixed (E1)** | See section 2. Field errors are now red, read with the field (`accessibilityHint`) and announced. |
 | 3.3.4 Error prevention (data) | **Fixed (E3)** | Deleting a goal or alert asks first; the goal prompt says how many sats return to the wallet. Transactions already showed a preview before "Confirm"; account deletion already asked and required the password. |
@@ -167,15 +187,15 @@ and `evaluation/results.json`.
 
 | Control | Result | Evidence |
 |---------|--------|----------|
-| STORAGE-1 stores sensitive data securely | Pass | The session token is in `expo-secure-store` (Keystore/Keychain), not AsyncStorage (`lib/api.ts`, `tokenStore`). Nothing else sensitive is stored on the device. |
+| STORAGE-1 stores sensitive data securely | Pass; backups Pass in config | The session token is in `expo-secure-store` (Keystore/Keychain), not AsyncStorage (`lib/api.ts`, `tokenStore`). Nothing else sensitive is stored on the device. The secure-store config plugin, listed in `app.json`, excludes its data from Android backups by default (`configureAndroidBackup = true` in `expo-secure-store/plugin`); the rules in the built APK were not inspected. |
 | STORAGE-2 prevents leakage | Pass, one note | No `console` calls in app code. The 2FA secret goes to the clipboard when the user taps Copy, which is the purpose of the button. |
 | CRYPTO-1, CRYPTO-2 | Not applicable | The app does no cryptography of its own; hashing and tokens are server-side. |
-| AUTH-1 secure authentication | Pass in app; see S1 | Server-side controls are in BACKEND_HARDENING.md. The shared demo account (S1) was the app's part of the problem. |
+| AUTH-1 secure authentication | Pass in app; see S1 | Server-side controls are in BACKEND_HARDENING.md. The shared demo account (S1) was the app's part of the problem. An expired session is told apart from a network failure: only a 401 on a request that carried a token, outside the sign-in endpoints, signs the user out; a timeout or no connection shows "Can't reach the server" and keeps the session (`lib/session.ts`, 5 tests). |
 | AUTH-2 local authentication | Not implemented | No biometric unlock. Android core app quality lists Biometric_Authentication for apps that protect financial data: a recommendation for a real card product. |
 | AUTH-3 additional authentication for sensitive operations | Pass | Deleting the account re-asks for the password; turning off 2FA asks for a code. |
 | NETWORK-1 secures all traffic | Pass for release builds; Unverified on the APK | The release profile sets an `https://` API URL (`eas.json`). The `http://` fallback is only for a development server on the LAN. No network security config is declared; checking the built manifest for cleartext settings needs the APK. |
 | NETWORK-2 identity pinning | Not implemented | Would need a native module and a new build. |
-| PLATFORM-1, -2 IPC and WebViews | Pass | No WebView; the privacy policy opens in the browser. |
+| PLATFORM-1, -2 IPC, links and WebViews | Pass, one note | No WebView; the privacy policy opens in the browser. The app's `bitback://` scheme lets any link open any screen, including `reset-password?token=…`. A link from someone else can only carry a token for their own account, and the server makes each token single-use, so the worst case is setting a password on the sender's account (severity 1, recorded rather than changed). |
 | PLATFORM-3 secure UI | Partial | The 2FA secret and backup codes can be screenshotted. Blocking that needs a native module and a new build. |
 | CODE-2 enforces updates | Partial | EAS Update fetches new JavaScript on launch; nothing forces a new binary. |
 | CODE-3 no known-vulnerable components | **Fail, not fixed (C3)** | `npm audit --omit=dev`: 43 advisories, 25 high and 18 moderate, no critical. Nearly all are build tools (Metro, Jest, Babel, `node-forge` used for code signing). The ones inside the shipped bundle are `decode-uri-component` and `query-string`, through expo-router (denial of service from a malformed link). Every fix npm offers is a major Expo upgrade (SDK 58), which needs a new native build: after submission, not before. |
@@ -246,6 +266,9 @@ the fix; it is a larger change than this audit.
 | `runtimeVersion` must be set | `{ "policy": "appVersion" }` → 1.0.0 | Pass |
 | Print the `expo-updates` constants to see what a build is running | Not possible before | **Fixed (R1)**: the foot of More shows version, runtime, channel and update ID with date, or says the build is running its built-in code, or that an update failed and was rolled back (`components/BuildInfo.tsx`, `lib/build.ts`, 4 tests) |
 | Updates that crash before the first screen renders are rolled back automatically | A crash inside one screen is not rolled back | The route error boundary (`components/ErrorBoundary.tsx`) catches those instead |
+| `updates.url` must point at the right EAS project | `u.expo.dev/9552e0f8-…` matches `extra.eas.projectId` (`app.json`) | Pass |
+| The channel must be linked to the branch the update was published to; the newest compatible update on that branch is the one delivered | Not visible from the repository | Unverified: `eas channel:view preview` shows the link and its latest update |
+| Delivery is not proof that screens work | - | After an update, compare the update ID on More with the one `eas update` printed, then smoke-test sign-in, Home, Boosts, AI insights, Fraud protection and Security on the Android APK (runtime 1.0.0) |
 
 Every change in this audit is JavaScript and assets only. The app version, and
 with it the runtime version, is unchanged, so `eas update --channel preview`
@@ -294,7 +317,26 @@ participants who are actual or likely users. A plan that fits the time left:
 | D1: no light theme | Design scope | A second palette, and every screen checked in both |
 | NETWORK-2, PLATFORM-3, biometrics, network security config | Native modules or config plugins | A new APK |
 | Home screen requests | Larger refactor | A query cache |
-| Startup, scroll and screen-reader behaviour | No device here | The `adb` command above, TalkBack on a phone, a 200% text-size pass |
+| Startup, scroll and screen-reader behaviour | No device here | The checks in section 10 |
+| A10: wake banner covers the top of the screen | Found after the fixes were made; shown here before changing anything | Proposed: `pointerEvents="none"` on the banner so touches reach what is underneath (one line), and draw it below the header rather than over it. Verify with check 1 in section 10 |
+
+## 10. Device checks
+
+Set out the way MASTG asks: each check has a precondition, steps and an
+expected result, and stays Unverified until someone runs it. All use a
+disposable account made for the test, never the demo account or anyone
+else's.
+
+| # | Check | Precondition | Steps | Expected |
+|---|-------|--------------|-------|----------|
+| 1 | Wake banner (A10) | App closed and server idle for 15+ minutes | Open the app; while the banner shows, tap the bell, then open a screen with a back button and tap back | Both taps work; the banner does not hide the control that has focus |
+| 2 | TalkBack | TalkBack on | Swipe through sign-in, Transact, Boosts and Fraud | Every control is announced with a role and state; order matches the screen; an error is read out when it appears |
+| 3 | Large text | Android font size at maximum, display size large | Visit Home, Transact, Boosts, AI insights, More | No clipped or overlapping text; the balance stays readable |
+| 4 | Keyboard and sheets | Signed in | Savings goals → New goal; tap each field | The focused field stays visible above the keyboard |
+| 5 | Startup | APK installed, app force-stopped | `adb shell am start -S -W app.bitback.mobile/.MainActivity`, five times | Record TotalTime; compare with the APK built before this change |
+| 6 | Update delivery | `eas update --channel preview` run | Open the app twice; read the build line on More | The update ID matches the one published; runtime 1.0.0, channel preview |
+| 7 | Offline | Airplane mode | Open each data screen, pull to refresh | A retryable error, never an endless spinner or a sign-out |
+| 8 | Session expiry | Signed in on the phone; reset the same test account's password with Forgot password on another device | Return to the app and refresh | Sent to sign-in; a network failure (check 7) does not do this |
 
 ## Tests added
 
