@@ -261,6 +261,14 @@ export const motion = {
 } as const;
 
 /**
+ * Tab bar labels grow with the system text size up to this factor. Five labels
+ * share a phone's width, so at 200% three were cut short ("Transa…"). Each
+ * tab also has an icon, and screen readers read the full title, so the label
+ * stops growing here instead - as the platforms' own tab bars do.
+ */
+export const TAB_LABEL_MAX_FONT_SCALE = 1.3;
+
+/**
  * The display figure grows with the system text size up to this factor and no
  * further: past it a seven-digit balance no longer fits a phone's width.
  */

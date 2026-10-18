@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { View, Text } from "react-native";
+import { View, Text, useWindowDimensions } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { aiAPI } from "@/lib/api";
 import { fraudFeature, relativeTime, riskBand, scoredBy, titleCase, usd } from "@/lib/format";
@@ -45,7 +45,8 @@ export default function Fraud() {
         </Text>
       </Card>
 
-      <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+      {/* Four across at normal sizes; two by two when large text needs the room. */}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
         <Tile label="Scanned" value={s.total_transactions_analyzed} />
         <Tile label="High" value={s.high_risk_count} color={COLORS.danger} />
         <Tile label="Medium" value={s.medium_risk_count} color={COLORS.primary} />
@@ -127,9 +128,13 @@ function Gauge({ value }: { value: number }) {
   );
 }
 
+/** A tile's width grows with the text size, so four fit across at 100% and they wrap at 200%. */
+const TILE_BASIS = 64;
+
 function Tile({ label, value, color = COLORS.text }: { label: string; value: number; color?: string }) {
+  const { fontScale } = useWindowDimensions();
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.card, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 12 }}>
+    <View style={{ flexGrow: 1, flexBasis: TILE_BASIS * Math.max(fontScale, 1), backgroundColor: COLORS.card, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 12 }}>
       <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>{label}</Text>
       <Num size={fontSize.heading} color={color}>{value}</Num>
     </View>

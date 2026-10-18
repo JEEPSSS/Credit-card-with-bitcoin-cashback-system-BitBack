@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import {
   ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text,
-  TextStyle, View, ViewStyle,
+  TextStyle, View, ViewStyle, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -22,8 +22,16 @@ export function Screen({
   /** A failed reload over data still on screen; see lib/screenState.ts. */
   refreshError?: string | null; onRetry?: () => void;
 }) {
+  // Keyed on the system text size. Changing it while the app runs left text
+  // laid out at the old size, clipped until the app was restarted (found on a
+  // device); a new key makes the screen's content lay itself out again. Screen
+  // state lives in the screen component above this, so nothing typed is lost.
+  const { fontScale } = useWindowDimensions();
   const inner = (
-    <View style={{ paddingHorizontal: padded ? space.lg : 0, paddingBottom: space["2xl"] }}>
+    <View
+      key={fontScale}
+      style={{ paddingHorizontal: padded ? space.lg : 0, paddingBottom: space["2xl"] }}
+    >
       {children}
     </View>
   );
