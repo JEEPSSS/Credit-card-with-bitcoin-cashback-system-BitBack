@@ -86,14 +86,14 @@ app complies with MASVS.
 | A9 | Accessibility | Android Touch_Target_Size (48 dp) | Chips, presets, period tabs and text links 33-41 dp tall | 1 | Fixed: 48 dp touch area. A device measurement then found the History "All" chip 45.7 dp wide; fixed with a 48 dp minimum width and remeasured at 48.00 dp |
 | A11 | Accessibility | WCAG 1.4.4 | Found on a device at 130% and 200% text: the payment card's lettering, amount presets, stat tiles and reward figures clipped | 2 | Fixed in `467d1b7` (card text capped at 1.2×, rows wrap); verified at 130% in round 3, where 200% still showed A12 |
 | A12 | Accessibility | WCAG 1.4.4 | Round 3 at 200%: three tab labels cut short; Boosts' "Extra per month" ran off its card. Changing the text size while the app ran left Home clipped until a restart | 2 | 200% on a fresh launch: fixed in `a5e3b87` and verified in round 4. Changing the size while the app runs: still failing; see A13 |
-| A13 | Accessibility | WCAG 1.4.4; Android State_Preservation | Changing the system text size while the app is open restarts it on Home, loses anything typed (42.75 reset to 25), and leaves text clipped until a full restart, in both directions. Cause: Android recreates the screen because MainActivity does not declare `fontScale` among the changes it handles (checked by generating the Android project) | 2 | **Partly fixed** in test APK `189f4cc5` (round 5): no restart, typed input kept, and going back to a smaller size recovers. Still open: growing the text while the app runs clips until the app is reopened. Likely cause: React Native measures text with the display metrics read at start-up, so larger text is drawn in boxes measured at the old size. Workaround: reopen the app after making text larger |
+| A13 | Accessibility | WCAG 1.4.4; Android State_Preservation | Changing the system text size while the app is open restarts it on Home, loses anything typed (42.75 reset to 25), and leaves text clipped until a full restart, in both directions. Cause: Android recreates the screen because MainActivity does not declare `fontScale` among the changes it handles (checked by generating the Android project) | 2 | **Partly fixed, released** in preview 2 (`v1.0.0-preview.2`, round 5): no restart, typed input kept, and going back to a smaller size recovers. Still open: growing the text while the app runs clips until the app is reopened. Likely cause: React Native measures text with the display metrics read at start-up, so larger text is drawn in boxes measured at the old size. Workaround: reopen the app after making text larger |
 | U1 | Usability | Nielsen #1 | "Copy key" gave no sign it had copied | 1 | Fixed |
 | U2 | Usability | Nielsen #9 | Invalid amount left a greyed-out button with no reason | 1 | Fixed |
 | R1 | Release | EAS Update debugging | No way to see on a phone which update it runs | 2 | Fixed: build info on More |
 | A10 | Accessibility | WCAG 2.4.11; Nielsen #3 | While the server wakes (up to a minute) the banner covers the top of every screen and takes taps on most of the back button and the notification bell | 2 | Fixed: the banner sits in the page and pushes content down |
 | C3 | Security | MASVS-CODE-3 | `npm audit`: 43 advisories (25 high, 18 moderate) | 2 | Not fixed: needs an Expo SDK major upgrade |
 | D1 | Design | Android Theme_Support | Dark theme only | 1 | Not fixed: documented |
-| M1 | Privacy | MASVS-PRIVACY-1; Android Minimize_Permissions | The APK requests five permissions the app never uses: read and write external storage, draw over other apps, biometric and fingerprint | 1 | **Fixed in test APK `189f4cc5`** (round 5): all five gone; internet, vibrate, network state and one library-internal permission remain. Reaches users when that APK, or a later one, is released |
+| M1 | Privacy | MASVS-PRIVACY-1; Android Minimize_Permissions | The APK requests five permissions the app never uses: read and write external storage, draw over other apps, biometric and fingerprint | 1 | **Fixed and released** in preview 2 (`v1.0.0-preview.2`, EAS build `189f4cc5`): all five gone; internet, vibrate, network state and one library-internal permission remain |
 
 Two problems were rated severity 3 (S1 and E1) and none severity 4; both are
 fixed in the app. A10, then E4, A11, A12 and A13, were found later on a device;
@@ -345,7 +345,7 @@ GOV.UK's):
 | S1, server side: protect the demo account | Backend change; deploys to the live server | Approval to deploy; a guard on 2FA, password change and deletion for that one email |
 | D1: no light theme | Design scope | A second palette, and every screen checked in both |
 | NETWORK-2, PLATFORM-3, biometrics, network security config | Native modules or config plugins | A new APK |
-| M1 and A13: unused permissions; restart on text-size change | Native configuration | Verified in test APK `189f4cc5`, not yet released |
+| M1 and A13: unused permissions; restart on text-size change | Native configuration | Released in preview 2 |
 | A13, remaining part: text made larger while the app runs clips until it is reopened | React Native's text measurement keeps the start-up display metrics | A native patch refreshing them on configuration change, and another APK build; or reopening the app, which always works |
 | Home screen requests, and data kept across visits to a screen | Larger refactor | A query cache |
 | Startup, scroll and screen-reader behaviour | No device here | The checks in section 10 |
@@ -460,6 +460,20 @@ matches the release asset), and no release was published.
 | Home, 100% → 200% while running | **Partial (A13)** | Stays on Home; text clips |
 | Home, 200% → 100% | Pass | Recovers without a restart |
 | Startup | Not remeasured | |
+
+### Preview 2 released
+
+The tested build was published unchanged, not rebuilt, as GitHub release
+[`v1.0.0-preview.2`](https://github.com/JEEPSSS/Bitcoin-cashback-system/releases/tag/v1.0.0-preview.2)
+on commit `c0cba48`, asset `bitback.apk`, SHA-256
+`fd3021063f828c00d94cd24b1df66dfd9d09adfc3b94c87d38c038d026d248df`. The
+tested file, the EAS download and the released download have the same hash,
+and GitHub's own digest for the asset matches it. It installed over preview 1
+with `adb install -r` (same signing key), and a smoke test passed: sign-up, a
+$25 purchase, Boosts, AI insights, Fraud protection and account deletion. The
+release notes state the remaining text-size limitation. Preview 1
+(`v1.0.0-preview`) is unchanged and remains the fallback; the README's "latest
+release" link now resolves to preview 2.
 
 ## Tests added
 
