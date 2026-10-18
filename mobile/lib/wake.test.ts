@@ -46,4 +46,15 @@ describe("ensureAwake", () => {
     await ensureAwake(() => Promise.resolve());
     expect(seen).toEqual([true, false]);
   });
+
+  it("tells a screen opened mid-wake that the server is already waking", async () => {
+    let finish!: () => void;
+    const waking = ensureAwake(() => new Promise<void>((r) => { finish = r; }));
+    const seen: boolean[] = [];
+    onWakingChange((w) => seen.push(w));
+    expect(seen).toEqual([true]);
+    finish();
+    await waking;
+    expect(seen).toEqual([true, false]);
+  });
 });

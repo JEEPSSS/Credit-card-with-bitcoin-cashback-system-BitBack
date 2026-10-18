@@ -10,6 +10,7 @@ import * as Haptics from "expo-haptics";
 
 import { COLORS, MIN_TOUCH_TARGET, font, fontSize, iconSize, radius, space } from "@/lib/theme";
 import type { AsyncState } from "@/lib/useApi";
+import { WakeBanner } from "@/components/WakeBanner";
 
 export { COLORS };
 
@@ -26,6 +27,7 @@ export function Screen({
   );
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
+      <WakeBanner />
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}

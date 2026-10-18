@@ -79,12 +79,12 @@ app complies with MASVS.
 | U1 | Usability | Nielsen #1 | "Copy key" gave no sign it had copied | 1 | Fixed |
 | U2 | Usability | Nielsen #9 | Invalid amount left a greyed-out button with no reason | 1 | Fixed |
 | R1 | Release | EAS Update debugging | No way to see on a phone which update it runs | 2 | Fixed: build info on More |
-| A10 | Accessibility | WCAG 2.4.11; Nielsen #3 | While the server wakes (up to a minute) the banner covers the top of every screen and takes taps on most of the back button and the notification bell | 2 | **Open**: fix proposed below, not applied |
+| A10 | Accessibility | WCAG 2.4.11; Nielsen #3 | While the server wakes (up to a minute) the banner covers the top of every screen and takes taps on most of the back button and the notification bell | 2 | Fixed: the banner sits in the page and pushes content down |
 | C3 | Security | MASVS-CODE-3 | `npm audit`: 43 advisories (25 high, 18 moderate) | 2 | Not fixed: needs an Expo SDK major upgrade |
 | D1 | Design | Android Theme_Support | Dark theme only | 1 | Not fixed: documented |
 
 Two problems were rated severity 3 (S1 and E1) and none severity 4; both are
-fixed in the app. A10 was found afterwards and is open.
+fixed in the app. A10 was found afterwards and fixed in a separate commit.
 
 ## 1. Accessibility: WCAG 2.2 AA and Android accessibility
 
@@ -135,7 +135,7 @@ tokens") so a token change cannot silently fail them.
 | 1.4.4 Resize text | **Fixed (A5)**; rest Unverified | The odometer sized its digit window from the unscaled font, so system text scaling clipped the balance. Now `scaledLineHeight` (theme) grows the window with `fontScale`, capped at 1.6× with the text held to the same cap; tested. Other fixed-height text (tab bar labels) needs checking on a phone at 200%. |
 | 2.3.3 Animation from interactions | Pass (AAA, beyond the AA target) | Odometer, skeleton and survey honour reduce-motion (`lib/useReducedMotion.ts`); Reanimated layout animations follow the system setting by default. |
 | 1.3.2 Meaningful sequence; 2.4.3 Focus order | Pass by code; Unverified | Screen readers follow the order of the component tree, and on every screen it matches the visual order. Two things are positioned on top of other content: the unread dot on the bell (inside the bell's labelled button) and the wake banner (last in the tree, so reached last, but announced as it appears). Needs a TalkBack pass. |
-| 2.4.11 Focus not obscured (minimum) | **Fail (A10)**; rest Unverified | `components/WakeBanner.tsx` is drawn over the top of the screen, from about 8 to 44 pt below the safe-area inset, for as long as the server takes to wake. It sets no `pointerEvents`, so it also takes the touches on that strip, which covers most of the back button (8-56 pt) and of the Home bell. Whether the keyboard hides inputs in the bottom sheets (new goal, add sats) needs a phone. |
+| 2.4.11 Focus not obscured (minimum) | **Fixed (A10)**; rest Unverified | `components/WakeBanner.tsx` was drawn over the top of the screen, from about 8 to 44 pt below the safe-area inset, for as long as the server takes to wake. It set no `pointerEvents`, so it also took the touches on that strip, which covers most of the back button (8-56 pt) and of the Home bell. It is now the first thing inside each screen (`Screen` in `components/ui.tsx`, and the start screen), so it pushes the content down instead of covering it, and only the screen in front shows it. A screen opened during a wake-up is told at once (`lib/wake.ts`, tested). Whether the keyboard hides inputs in the bottom sheets (new goal, add sats) needs a phone. |
 | 2.5.8 Target size (minimum), 24×24 | Pass, from styles | Smallest was the privacy link, about 33 pt tall by its padding and line height; not measured on a device. WCAG states this in CSS pixels; treating them as dp or pt on a phone is the usual reading for native apps, not something WCAG itself says. |
 | Android Touch_Target_Size, 48 dp | **Fixed (A9)** | 40 pt chips, presets and period tabs get 4 pt of hit area above and below (`CONTROL_HIT_SLOP`); history chips 6 pt; sign-in links, privacy and delete-account links a 48 pt minimum height; alert direction toggles 48 pt. |
 | 3.3.1 Error identification | **Fixed (E1)** | See section 2. Field errors are now red, read with the field (`accessibilityHint`) and announced. |
@@ -318,7 +318,6 @@ participants who are actual or likely users. A plan that fits the time left:
 | NETWORK-2, PLATFORM-3, biometrics, network security config | Native modules or config plugins | A new APK |
 | Home screen requests | Larger refactor | A query cache |
 | Startup, scroll and screen-reader behaviour | No device here | The checks in section 10 |
-| A10: wake banner covers the top of the screen | Found after the fixes were made; shown here before changing anything | Proposed: `pointerEvents="none"` on the banner so touches reach what is underneath (one line), and draw it below the header rather than over it. Verify with check 1 in section 10 |
 
 ## 10. Device checks
 
@@ -329,7 +328,7 @@ else's.
 
 | # | Check | Precondition | Steps | Expected |
 |---|-------|--------------|-------|----------|
-| 1 | Wake banner (A10) | App closed and server idle for 15+ minutes | Open the app; while the banner shows, tap the bell, then open a screen with a back button and tap back | Both taps work; the banner does not hide the control that has focus |
+| 1 | Wake banner (A10) | App closed and server idle for 15+ minutes | Open the app; while the banner shows, tap the bell, then open a screen with a back button and tap back | The banner sits above the content without covering it; both taps work; content moves back up when it goes |
 | 2 | TalkBack | TalkBack on | Swipe through sign-in, Transact, Boosts and Fraud | Every control is announced with a role and state; order matches the screen; an error is read out when it appears |
 | 3 | Large text | Android font size at maximum, display size large | Visit Home, Transact, Boosts, AI insights, More | No clipped or overlapping text; the balance stays readable |
 | 4 | Keyboard and sheets | Signed in | Savings goals → New goal; tap each field | The focused field stays visible above the keyboard |
@@ -344,9 +343,11 @@ else's.
   durations, scaled odometer height, and WCAG contrast of the text and field
   tokens (the placeholder and edge tests fail on the old tokens).
 - `mobile/lib/build.test.ts`: the four states the build line reports.
+- `mobile/lib/wake.test.ts`: a screen opened while the server is waking shows the
+  banner at once (A10).
 - `tests/test_icon_names.py`: every icon name the backend can send is shipped.
 
-Front-end tests 39 → 54; backend 236 → 239 (plus 2 that run only on Postgres).
+Front-end tests 39 → 55; backend 236 → 239 (plus 2 that run only on Postgres).
 
 ## Sources
 
