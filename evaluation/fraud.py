@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.anomaly_detector import (
     ANOMALY_THRESHOLD,
+    CALIBRATION_ANCHOR,
     _features,
     _heuristic_score,
     invalidate,
@@ -71,6 +72,11 @@ def evaluate(db: Session, *, days: int = 180, fraud_count: int = 8, seed: int = 
 
     model = confusion(model_scores, labels, ANOMALY_THRESHOLD)
     baseline = confusion(baseline_scores, labels, ANOMALY_THRESHOLD)
+    # The previous detector (v2) flagged at the calibration anchor of 60 with
+    # no hour check. Its decisions are recoverable exactly from v3's scores:
+    # the hour check only ever raises a score to ANOMALY_THRESHOLD (56), which
+    # is below 60, so "v3 score >= 60" is "v2 flagged it".
+    previous = confusion(model_scores, labels, CALIBRATION_ANCHOR)
 
     # Recall per anomaly type shows *which* departures the model misses, which
     # is far more actionable than one aggregate number.
@@ -98,6 +104,12 @@ def evaluate(db: Session, *, days: int = 180, fraud_count: int = 8, seed: int = 
         "isolation_forest": {
             **model.as_dict(),
             "average_precision": round(average_precision(model_scores, labels), 4),
+        },
+        "previous_detector_v2": {
+            **previous.as_dict(),
+            "hour_recall": round(
+                sum(1 for s in by_kind.get("hour", []) if s >= CALIBRATION_ANCHOR)
+                / max(1, len(by_kind.get("hour", []))), 4),
         },
         "heuristic_baseline": {
             **baseline.as_dict(),

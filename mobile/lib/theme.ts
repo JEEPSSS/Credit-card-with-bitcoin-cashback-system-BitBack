@@ -261,7 +261,7 @@ export const numeric = {
 /* ------------------------------------------------------------------ domain */
 
 /** Risk bands mirror the backend's ANOMALY_THRESHOLD of 60. */
-export const RISK_FLAG_THRESHOLD = 60;
+export const RISK_FLAG_THRESHOLD = 56;
 export const RISK_WATCH_THRESHOLD = 30;
 
 export const CATEGORY_ICON = {

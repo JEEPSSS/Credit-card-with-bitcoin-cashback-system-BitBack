@@ -49,6 +49,8 @@ def _cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb) if na > 1e-9 and nb > 1e-9 else 0.0
 
 
+BALANCED_MARGIN = 0.05
+
 # Below this many purchases the persona is mostly noise. Evaluated on
 # simulated cardholders of known persona (evaluation/persona.py): after 5
 # purchases it was right 55-57% of the time while reporting ~66% confidence;
@@ -88,6 +90,15 @@ def persona_from_spend(spend: Mapping[str, float]) -> dict:
         key=lambda s: s["similarity"], reverse=True,
     )
     best, runner = scored[0], scored[1]
+    # Balanced wins near-ties. A few dozen purchases from an even spender are
+    # lumpy, so they sit slightly closer to some specific persona by chance:
+    # Balanced was recognised only 42% of the time. Preferring it within this
+    # margin raised that to 62% and overall accuracy by 1.6 points (95% CI
+    # 0.8-2.4) on held-out data; the margin was chosen on separate validation
+    # data as the one maximising overall accuracy (evaluation/persona.py).
+    balanced = next(s for s in scored if s["persona"]["key"] == "balanced")
+    if best is not balanced and balanced["similarity"] >= best["similarity"] - BALANCED_MARGIN:
+        best, runner = balanced, best
     gap = best["similarity"] - runner["similarity"]
     confidence = round(min(0.99, best["similarity"] * (0.75 + min(0.25, gap * 2.5))), 3)
 

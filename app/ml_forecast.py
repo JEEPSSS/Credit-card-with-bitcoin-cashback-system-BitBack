@@ -59,6 +59,15 @@ LOOKBACK_DAYS = 91          # 13 whole weeks
 HORIZON_DAYS = 30
 TREND_TOLERANCE = 0.05      # weekly slope, as a share of the weekly mean
 
+# The range shown with the forecast is an 80% prediction interval: in 80% of
+# 30-day periods the outcome should fall inside it. Built from the
+# cardholder's own week-to-week variability (see _interval). INTERVAL_SCALE
+# corrects for what that formula leaves out; it is fitted on validation
+# backtests and confirmed on held-out ones (evaluation/robustness.py).
+PREDICTION_LEVEL = 0.80
+Z_80 = 1.2816               # standard normal quantile for a central 80%
+INTERVAL_SCALE = 1.18      # fitted on validation backtests (seeds 201-230) for 80% coverage
+
 # Weight on level smoothing against the window mean. 0.5 was chosen by the
 # backtest above, not by taste; the two candidates are close enough across
 # regimes that an even split is the defensible choice.
@@ -214,6 +223,22 @@ def _holt_forecast(fit: dict, weeks: float) -> float:
     return total
 
 
+def _interval(y: list[float], forecast: float, weeks: float) -> tuple[int, int]:
+    """80% prediction interval for the sum of the next `weeks` weeks.
+
+    Two sources of error, combined as independent variances: the next weeks'
+    own week-to-week variation (weeks x s^2), and the error in the estimated
+    weekly mean they are projected from (weeks^2 x s^2 / n). The previous range
+    was a fixed +/-10-20% of the forecast whatever the cardholder's history,
+    and contained the outcome only 54-69% of the time.
+    """
+    n = len(y)
+    mean = sum(y) / n
+    var = sum((v - mean) ** 2 for v in y) / (n - 1) if n > 1 else mean ** 2
+    half = INTERVAL_SCALE * Z_80 * (var * weeks + var * weeks ** 2 / n) ** 0.5
+    return int(round(max(0.0, forecast - half))), int(round(forecast + half))
+
+
 def forecast_earnings(db: Session, user_id: int, as_of: datetime | None = None) -> dict:
     y, active_days = _weekly_series(db, user_id, as_of)
     non_empty = sum(1 for v in y if v > 0)
@@ -242,7 +267,7 @@ def forecast_earnings(db: Session, user_id: int, as_of: datetime | None = None) 
 
     blended = LEVEL_WEIGHT * level_only + (1 - LEVEL_WEIGHT) * window_mean
     confidence = round(0.5 + 0.5 * lin["r2"], 3)
-    band = 0.20 - 0.10 * lin["r2"]
+    lower, upper = _interval(y, blended, horizon_weeks)
 
     # The direction label describes the observed series, so it is read from the
     # least-squares slope rather than from Holt's trend state. Damping shrinks
@@ -258,8 +283,9 @@ def forecast_earnings(db: Session, user_id: int, as_of: datetime | None = None) 
     return {
         "has_enough_data": True,
         "predicted_sats_30d": int(round(blended)),
-        "lower_bound": int(round(blended * (1 - band))),
-        "upper_bound": int(round(blended * (1 + band))),
+        "lower_bound": lower,
+        "upper_bound": upper,
+        "interval_level": PREDICTION_LEVEL,
         "confidence": confidence,
         "trend_direction": direction,
         "daily_average_sats": int(round(sum(y) / max(1, active_days))),

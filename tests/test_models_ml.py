@@ -312,3 +312,59 @@ def test_hour_rarity_is_relative_to_this_cardholder(db, user_factory):
     owl_history = db.query(Transaction).filter(Transaction.user_id == night_owl.id).all()
 
     assert _hour_rarity(3, owl_history) < 0.1
+
+
+def _routine_purchase_at(db, user, hour: int) -> Transaction:
+    tx = Transaction(user_id=user.id, amount_fiat=32.0, category="dining",
+                     merchant="Regular 1", btc_price_at_time=50_000.0, sats_earned=100,
+                     created_at=utcnow().replace(hour=hour))
+    db.add(tx)
+    db.commit()
+    return tx
+
+
+def _usual_hour(db, user) -> int:
+    """_build_history puts every purchase at the same clock hour; read it back."""
+    return db.query(Transaction).filter(Transaction.user_id == user.id).first().created_at.hour
+
+
+def test_a_routine_purchase_at_a_never_used_hour_is_flagged(db, user):
+    """Regression: a normal amount at a familiar shop, at an hour the
+    cardholder has never used, scored just under the line - the forest averages
+    six features and only one was unusual. Hour recall was 0.40 over 30 seeds;
+    the never-seen-hour check takes it to 0.97 (docs/EVALUATION.md)."""
+    _build_history(db, user.id)
+    unusual = (_usual_hour(db, user) + 12) % 24
+    record = score_transaction(db, user.id, _routine_purchase_at(db, user, unusual))
+    assert record.is_anomaly
+    assert record.model_version == MODEL_VERSION == "iforest-v3"
+
+
+def test_the_same_purchase_at_the_usual_hour_is_not_flagged(db, user):
+    _build_history(db, user.id)
+    tx = _routine_purchase_at(db, user, _usual_hour(db, user))
+    assert not score_transaction(db, user.id, tx).is_anomaly
+
+
+def test_an_even_spender_with_a_slight_lean_is_balanced():
+    """Regression: near-ties went to the specific persona, so Balanced was
+    recognised only ~40% of the time. Within BALANCED_MARGIN it now wins."""
+    from unittest.mock import patch
+
+    from app import spending_persona
+    from app.spending_persona import CATEGORIES, persona_from_spend
+
+    spend = dict.fromkeys(CATEGORIES, 100.0)
+    spend["dining"] += 160.0
+    spend["groceries"] += 112.0
+    assert persona_from_spend(spend)["persona"]["key"] == "balanced"
+    with patch.object(spending_persona, "BALANCED_MARGIN", -1.0):     # the old rule
+        assert persona_from_spend(spend)["persona"]["key"] == "foodie"
+
+
+def test_a_clear_foodie_is_still_a_foodie():
+    from app.spending_persona import CATEGORIES, persona_from_spend
+
+    spend = dict.fromkeys(CATEGORIES, 10.0)
+    spend["dining"], spend["groceries"] = 700.0, 500.0
+    assert persona_from_spend(spend)["persona"]["key"] == "foodie"

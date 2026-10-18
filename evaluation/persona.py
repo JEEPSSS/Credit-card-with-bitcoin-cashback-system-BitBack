@@ -16,6 +16,9 @@ That separates two reasons the classifier can be wrong:
               estimate of it. Measured by the gap between the ceiling and the
               accuracy after n purchases.
 
+Seeds: 230 was used to choose the Balanced margin; the default (330) is
+held out and reports it.
+
 The app originally unlocked the persona after 5 purchases. This suite found
 that close to a coin flip - and overconfident - so the threshold is now 20
 (app/spending_persona.py); accuracy at both counts is reported.
@@ -26,7 +29,9 @@ Guo et al., 2017) summarises the gap across ten confidence bins.
 """
 import random
 from collections import defaultdict
+from unittest.mock import patch
 
+from app import spending_persona
 from app.spending_persona import CATEGORIES, MIN_TRANSACTIONS, PERSONAS, persona_from_spend
 from evaluation.recommender import AMOUNTS
 from evaluation.stats import summary
@@ -77,7 +82,7 @@ def _ece(confidences: list[float], correct: list[bool], bins: int = 10) -> tuple
     return ece, table
 
 
-def evaluate(_db=None, *, per_cell: int = 200, seed: int = 23) -> dict:
+def evaluate(_db=None, *, per_cell: int = 200, seed: int = 330) -> dict:
     """`per_cell` cardholders for every (persona, typicality) pair."""
     rng = random.Random(seed)
     by_cell: dict[tuple[str, int], list[float]] = defaultdict(list)       # (typicality, n)
@@ -86,6 +91,8 @@ def evaluate(_db=None, *, per_cell: int = 200, seed: int = 23) -> dict:
     confusion = {t: dict.fromkeys(KEYS, 0) for t in KEYS}
     confidences: list[float] = []
     correct: list[bool] = []
+    margin_gain: list[float] = []
+    per_persona_before: dict[str, list[float]] = defaultdict(list)
     by_n_conf: dict[int, list[float]] = defaultdict(list)
     by_n_correct: dict[int, list[bool]] = defaultdict(list)
 
@@ -113,6 +120,12 @@ def evaluate(_db=None, *, per_cell: int = 200, seed: int = 23) -> dict:
                     if n == 20:
                         per_persona[truth].append(float(hit))
                         confusion[truth][guess] += 1
+                        # The same purchases without the Balanced margin, for
+                        # a paired before/after comparison.
+                        with patch.object(spending_persona, "BALANCED_MARGIN", -1.0):
+                            before = persona_from_spend(spend)["persona"]["key"]
+                        margin_gain.append(float(hit) - float(before == truth))
+                        per_persona_before[truth].append(float(before == truth))
 
     ece, reliability = _ece(confidences, correct)
     return {
@@ -131,6 +144,12 @@ def evaluate(_db=None, *, per_cell: int = 200, seed: int = 23) -> dict:
         },
         "recall_by_persona_at_20_purchases": {k: summary(v, seed=seed) for k, v in per_persona.items()},
         "confusion_at_20_purchases": {"rows_are_truth": confusion},
+        "balanced_margin": {
+            "margin": spending_persona.BALANCED_MARGIN,
+            "accuracy_gain_paired_at_20": summary(margin_gain, seed=seed),
+            "recall_by_persona_without_margin": {k: round(sum(v) / len(v), 4)
+                                                 for k, v in per_persona_before.items()},
+        },
         "calibration": {
             "expected_calibration_error": round(ece, 4),
             "mean_confidence": round(sum(confidences) / len(confidences), 4),

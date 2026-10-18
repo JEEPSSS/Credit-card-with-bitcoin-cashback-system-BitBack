@@ -125,6 +125,8 @@ def _backtest(db: Session, name: str, trend: float, days: int, folds: int, seed:
             "predicted_sats": int(predicted),
             "naive_sats": int(naive),
             "error_pct": round((predicted - actual) / actual * 100, 2) if actual else None,
+            "lower_bound": result["lower_bound"],
+            "upper_bound": result["upper_bound"],
             "within_bounds": result["lower_bound"] <= actual <= result["upper_bound"],
             "trend_direction": result["trend_direction"],
         })

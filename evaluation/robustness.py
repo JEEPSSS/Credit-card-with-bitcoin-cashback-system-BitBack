@@ -13,7 +13,11 @@ from evaluation import forecast, fraud
 from evaluation.db import fresh_session
 from evaluation.stats import summary
 
-SEEDS = range(1, 31)
+# Held-out seeds. Seeds 1-30 were reported before the models changed, and
+# 201-230 were used to choose the changes (VALIDATION_SEEDS); every number
+# this suite reports comes from seeds used for neither.
+SEEDS = range(301, 331)
+VALIDATION_SEEDS = range(201, 231)
 FRAUD_METRICS = ("precision", "recall", "f1", "false_positive_rate", "average_precision")
 
 
@@ -27,6 +31,7 @@ def _run(suite, seed: int) -> dict:
 
 def _fraud() -> dict:
     model, baseline, diff = defaultdict(list), defaultdict(list), defaultdict(list)
+    previous, vs_previous = defaultdict(list), defaultdict(list)
     detected, count = defaultdict(int), defaultdict(int)
     for seed in SEEDS:
         r = _run(fraud, seed)
@@ -34,6 +39,11 @@ def _fraud() -> dict:
             model[m].append(r["isolation_forest"][m])
             baseline[m].append(r["heuristic_baseline"][m])
             diff[m].append(r["isolation_forest"][m] - r["heuristic_baseline"][m])
+        for m in ("precision", "recall", "f1", "false_positive_rate", "hour_recall"):
+            current = (r["recall_by_anomaly_type"]["hour"]["recall"] if m == "hour_recall"
+                       else r["isolation_forest"][m])
+            previous[m].append(r["previous_detector_v2"][m])
+            vs_previous[m].append(current - r["previous_detector_v2"][m])
         for kind, k in r["recall_by_anomaly_type"].items():
             detected[kind] += k["detected"]
             count[kind] += k["count"]
@@ -43,6 +53,8 @@ def _fraud() -> dict:
         "heuristic_baseline": {m: summary(v) for m, v in baseline.items()},
         "model_minus_baseline": {m: summary(v) for m, v in diff.items()},
         "model_beats_baseline_on_f1": sum(d > 0 for d in diff["f1"]),
+        "previous_detector_v2": {m: summary(v) for m, v in previous.items()},
+        "current_minus_previous": {m: summary(v) for m, v in vs_previous.items()},
         "pooled_recall_by_anomaly_type": {
             kind: {"detected": detected[kind], "count": count[kind],
                    "recall": round(detected[kind] / count[kind], 4)}

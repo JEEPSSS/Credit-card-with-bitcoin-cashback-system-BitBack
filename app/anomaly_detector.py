@@ -41,10 +41,20 @@ from app.models import Transaction, TransactionRiskScore
 
 MIN_TRAIN_SIZE = 50
 MIN_CONTEXT = 20      # prior transactions a training row needs to be usable
-ANOMALY_THRESHOLD = 60
+# The model's decision boundary (decision_function = 0) is mapped to this
+# point on the 0-100 scale; see _FittedModel.calibrate.
+CALIBRATION_ANCHOR = 60
+# Scores at or above this raise an alert. Chosen on validation data
+# (evaluation seeds 201-230) as the best F1 with at most 1% false alarms, and
+# confirmed on separate held-out seeds; it was 60, the calibration anchor.
+ANOMALY_THRESHOLD = 56
 CONTAMINATION = 0.05
-MODEL_VERSION = "iforest-v2"     # v2: hour_of_day replaced by hour_rarity
+MODEL_VERSION = "iforest-v3"     # v3: alert at 56, plus the never-seen-hour check
 HOUR_WINDOW = 2                  # ± hours counted as "the same time of day"
+# A purchase whose hour rarity exceeds everything in the cardholder's training
+# history by this much is flagged even if the forest scores it just below the
+# line. See score_transaction.
+HOUR_NOVELTY_MARGIN = 0.1
 HISTORY_LIMIT = 500
 CACHE_SIZE = 256      # users held in the model cache before the oldest is evicted
 
@@ -156,13 +166,15 @@ def _heuristic_score(f: dict) -> int:
 class _FittedModel:
     """An Isolation Forest plus the calibration data derived from its training set."""
 
-    __slots__ = ("model", "train_min", "train_max", "trained_at_size")
+    __slots__ = ("model", "train_min", "train_max", "trained_at_size", "hour_rarity_max")
 
-    def __init__(self, model: IsolationForest, train_d: np.ndarray, trained_at_size: int):
+    def __init__(self, model: IsolationForest, train_d: np.ndarray, trained_at_size: int,
+                 hour_rarity_max: float = 1.0):
         self.model = model
         self.train_min = float(train_d.min())
         self.train_max = float(train_d.max())
         self.trained_at_size = trained_at_size
+        self.hour_rarity_max = hour_rarity_max
 
     def calibrate(self, x: np.ndarray) -> int:
         """Map an Isolation Forest decision value onto a 0-100 risk scale.
@@ -175,18 +187,19 @@ class _FittedModel:
         decision_function is already offset by the contamination hyperparameter,
         so it is negative for exactly the fraction of training points
         contamination declares to be outliers. Anchoring 50 at that boundary
-        means the flagging threshold of 60 is derived from contamination rather
-        than picked by hand.
+        means the scale is derived from contamination rather than picked by
+        hand. The alert threshold sits slightly below the anchor; see
+        ANOMALY_THRESHOLD.
         """
         d = float(self.model.decision_function(x)[0])
         if d < 0:
-            # Outlier side: ANOMALY_THRESHOLD..100, deepest training outlier at 100.
+            # Outlier side: anchor..100, deepest training outlier at 100.
             span = abs(self.train_min) if self.train_min < -1e-9 else 1.0
-            risk = ANOMALY_THRESHOLD + (100 - ANOMALY_THRESHOLD) * min(1.0, abs(d) / span)
+            risk = CALIBRATION_ANCHOR + (100 - CALIBRATION_ANCHOR) * min(1.0, abs(d) / span)
         else:
-            # Inlier side: 0..ANOMALY_THRESHOLD, most normal training point at 0.
+            # Inlier side: 0..anchor, most normal training point at 0.
             span = self.train_max if self.train_max > 1e-9 else 1.0
-            risk = ANOMALY_THRESHOLD * (1.0 - min(1.0, d / span))
+            risk = CALIBRATION_ANCHOR * (1.0 - min(1.0, d / span))
         return int(max(0, min(100, round(risk))))
 
 
@@ -244,7 +257,9 @@ def _fit(history: list[Transaction]) -> _FittedModel | None:
         return None
     model = IsolationForest(contamination=CONTAMINATION, random_state=42, n_estimators=100)
     model.fit(X)
-    return _FittedModel(model, model.decision_function(X), len(history))
+    hour_col = FEATURE_NAMES.index("hour_rarity")
+    return _FittedModel(model, model.decision_function(X), len(history),
+                        hour_rarity_max=float(X[:, hour_col].max()))
 
 
 def score_transaction(db: Session, user_id: int, tx: Transaction) -> TransactionRiskScore:
@@ -274,6 +289,16 @@ def score_transaction(db: Session, user_id: int, tx: Transaction) -> Transaction
 
     if fitted is not None:
         risk = fitted.calibrate(np.array([_vector(feats)], dtype=float))
+        # The forest averages over six features, so a purchase that departs on
+        # only one - a normal amount, at a familiar shop, at an hour this
+        # cardholder has never once used - scored a median of 58.5 and was
+        # missed more often than not (recall 0.40 over 30 seeds). An hour
+        # beyond anything in the cardholder's own training history is flagged
+        # outright. Restricted to hour on purpose: extending the same check to
+        # amount and timing features raised false alarms above 1% on
+        # validation data without catching more fraud.
+        if feats["hour_rarity"] > fitted.hour_rarity_max + HOUR_NOVELTY_MARGIN:
+            risk = max(risk, ANOMALY_THRESHOLD)
         version = MODEL_VERSION
     else:
         risk = _heuristic_score(feats)

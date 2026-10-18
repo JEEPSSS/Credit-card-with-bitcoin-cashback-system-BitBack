@@ -28,7 +28,7 @@ export function relativeTime(iso: string) {
 export const titleCase = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /**
- * Risk bands mirror the backend's ANOMALY_THRESHOLD: >=60 flags, 30-59 watch,
+ * Risk bands mirror the backend's ANOMALY_THRESHOLD: >=56 flags, 30-55 watch,
  * below is normal. The thresholds and colours come from the theme so this
  * cannot drift away from the rest of the app.
  */

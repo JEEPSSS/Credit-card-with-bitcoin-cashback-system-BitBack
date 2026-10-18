@@ -96,7 +96,7 @@ export default function Fraud() {
         <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 8, lineHeight: 20 }}>
           An Isolation Forest learns what your normal spending looks like across six features, then measures how far
           each new transaction sits from it. Once you have enough history the model trains on your own transactions;
-          before that a simpler rule set covers the gap. A score of 60 or above marks a transaction for review.
+          before that a simpler rule set covers the gap. A score of 56 or above marks a transaction for review.
         </Text>
       </Card>
     </Screen>
