@@ -74,7 +74,8 @@ export default function Boosts() {
           <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 8, lineHeight: 20 }}>
             {pick.explanation}
           </Text>
-          <View style={{ flexDirection: "row", gap: 20, marginTop: 14 }}>
+          {/* Wraps at large text sizes; side by side, "Extra per month" ran off the card. */}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 20, rowGap: space.md, marginTop: 14 }}>
             <View>
               <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>Share of boost value</Text>
               <Num size={fontSize.body} color={COLORS.primary}>{`${pick.score}%`}</Num>
