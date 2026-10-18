@@ -380,3 +380,36 @@ Primary sources, as recommended for citation:
   read from <https://github.com/facebook/react-native-website>.
 - Expo, *Debug EAS Update*: <https://docs.expo.dev/eas-update/debug/>; read
   from <https://github.com/expo/expo>.
+
+## Undoing these changes
+
+Everything here can be taken back, in whole or in part, without losing history.
+Each undo is a new commit, so an undo can itself be undone.
+
+**Restore point.** The tag `before-app-audit` marks `main` as it was before any of
+this (commit `2eed728`). `git diff before-app-audit main` shows everything that
+changed since.
+
+**In the code** (after the pull request is merged with a merge commit):
+
+| To undo | Run on `main`, then `git push` |
+|---------|--------------------------------|
+| Only the wake banner change (A10) | `git revert e8db53a` |
+| One fix | `git revert <its commit>`; `git log --oneline before-app-audit..main` lists them |
+| The whole audit at once | `git revert -m 1 <merge commit>`; `git log --merges -1` shows it |
+
+Nothing on the server changed, so none of these needs a Render deploy.
+
+**On phones.** The app changes reach phones as an over-the-air update, and an
+update can be replaced by an older one:
+
+1. Before publishing, note the update that phones run now:
+   `eas update:list --branch preview --limit 3`, and copy its group ID.
+2. Publish: `eas update --channel preview --message "App audit fixes"`.
+3. To go back, publish the old group again:
+   `eas update:republish --group <group ID from step 1>`
+   (`eas update:republish --help` shows the options in your CLI version).
+
+A phone fetches the newest update when the app starts and runs it from the
+next start, so open the app twice after either step. The build line at the
+foot of More shows which update a phone is running.
