@@ -138,9 +138,9 @@ export const PaymentCard = memo(function PaymentCard({
 
       <View style={styles.inner}>
         <View style={styles.topRow}>
-          <Text style={[styles.wordmark, { color: tier.ink }]}>BitBack</Text>
+          <Text maxFontSizeMultiplier={CARD_MAX_FONT_SCALE} style={[styles.wordmark, { color: tier.ink }]}>BitBack</Text>
           <View style={[styles.tierPill, { borderColor: tier.edge }]}>
-            <Text style={[styles.tierText, { color: tier.edge }]}>
+            <Text maxFontSizeMultiplier={CARD_MAX_FONT_SCALE} style={[styles.tierText, { color: tier.edge }]}>
               {levelName} · {multiplier}×
             </Text>
           </View>
@@ -151,23 +151,33 @@ export const PaymentCard = memo(function PaymentCard({
           <Contactless size={width * 0.062} tint={tier.ink} />
         </View>
 
-        <Text style={[styles.pan, { color: tier.ink }]}>
+        <Text maxFontSizeMultiplier={CARD_MAX_FONT_SCALE} style={[styles.pan, { color: tier.ink }]}>
           {PAN_MASK}  {PAN_MASK}  {PAN_MASK}  {lastFour(seed)}
         </Text>
 
         <View style={styles.bottomRow}>
-          <Text numberOfLines={1} style={[styles.holder, { color: tier.ink }]}>
+          <Text maxFontSizeMultiplier={CARD_MAX_FONT_SCALE} numberOfLines={1} style={[styles.holder, { color: tier.ink }]}>
             {holder.toUpperCase()}
           </Text>
           <View>
-            <Text style={[styles.expiryLabel, { color: tier.ink }]}>VALID THRU</Text>
-            <Text style={[styles.expiry, { color: tier.ink }]}>{expiry(seed)}</Text>
+            <Text maxFontSizeMultiplier={CARD_MAX_FONT_SCALE} style={[styles.expiryLabel, { color: tier.ink }]}>VALID THRU</Text>
+            <Text maxFontSizeMultiplier={CARD_MAX_FONT_SCALE} style={[styles.expiry, { color: tier.ink }]}>{expiry(seed)}</Text>
           </View>
         </View>
       </View>
     </View>
   );
 });
+
+/**
+ * The card is drawn at the ID-1 proportions of a real card, so its height is
+ * fixed by its width, and at large system text sizes its lettering ran out of
+ * the bottom edge. Its text grows with the system setting only this far.
+ * Nothing is lost: the card is exposed to screen readers as one image with
+ * its tier and multiplier in the label, and the same level and multiplier are
+ * shown as full-size text in the Level tile beneath it.
+ */
+const CARD_MAX_FONT_SCALE = 1.2;
 
 const styles = StyleSheet.create({
   card: { overflow: "hidden" },

@@ -44,7 +44,7 @@ export default function Home() {
   return (
     <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
       <View style={styles.topBar}>
-        <View>
+        <View style={{ flexShrink: 1 }}>
           <Text style={styles.greeting}>{greeting}</Text>
           <Text style={styles.name}>{user?.display_name ?? "there"}</Text>
         </View>
@@ -245,6 +245,7 @@ const styles = StyleSheet.create({
   },
   priceRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: space.xs + 2,
     marginTop: space.lg,
@@ -261,7 +262,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: space.md,
   },
-  statHead: { flexDirection: "row", alignItems: "center", gap: space.xs + 1 },
+  // Wraps so a tile's label and icon stay inside it at large text sizes.
+  statHead: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space.xs + 1 },
   statLabel: { color: COLORS.muted, fontSize: fontSize.caption },
   statValue: {
     color: COLORS.text,
