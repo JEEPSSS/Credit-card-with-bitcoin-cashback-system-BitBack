@@ -49,7 +49,7 @@ Demo login: `demo@bitback.app` / `demo12345`
 **Tests**
 
 ```bash
-pytest                    # 232 backend tests, each on its own in-memory database
+pytest                    # 236 backend tests, each on its own in-memory database
 TEST_DATABASE_URL=postgresql://... pytest   # the same suite on Postgres (+2 race tests)
 ruff check app main.py seed_demo.py tests evaluation scripts
 cd mobile && npm test     # 39 front-end tests
@@ -86,17 +86,18 @@ mobile/                 Expo app (21 screens)
 
 | Component | Job | How | Evaluated result |
 |---|---|---|---|
-| Isolation Forest | Score each transaction for fraud | 6 features, all relative to the user's own history | F1 0.84 [0.81, 0.88] over 30 seeds; beats the rule baseline on all 30 |
-| Earnings forecast | Next 30 days of sats | Weekly level smoothing blended with the window mean | Beats "same as last month" for steady and growing spending |
+| Isolation Forest | Score each transaction for fraud | 6 features relative to the user's own history, plus a never-seen-hour check | F1 0.89 [0.86, 0.91] on 30 held-out seeds; beats the rule baseline on all 30 |
+| Earnings forecast | Next 30 days of sats, with an 80% range | Weekly level smoothing blended with the window mean | Beats "same as last month" for steady and growing spending |
 | Boost recommender | Which category boost to activate | Ranked by expected boost value (spend x rate) | Best category 70% vs 61% for the original weighted score |
-| Spending persona | Which of five personas you are | Nearest centroid, cosine similarity, after 20 purchases | 75% right and calibrated at 20 purchases (56% at 5) |
+| Spending persona | Which of five personas you are | Nearest centroid, cosine similarity, after 20 purchases | 75.5% right and calibrated at 20 purchases |
 | Reward engine | Cashback in sats | Pure arithmetic | 0 violations across 200,000 random purchases |
 | Gamification | Streaks, badges, levels | Badge rules in SQL | Attainment simulated for light/regular/heavy users |
 
 Every component is evaluated against known ground truth and simple baselines,
 with 95% confidence intervals: [docs/EVALUATION.md](docs/EVALUATION.md)
-(`python -m evaluation.run` reproduces every number). Three of them changed
-because of what the evaluation found.
+(`python -m evaluation.run` reproduces every number). Five of them changed
+because of what the evaluation found; each change was chosen on validation
+data and confirmed on separate held-out data.
 
 Several of these needed real debugging rather than tuning, and the reasoning is
 written into the module docstrings:
