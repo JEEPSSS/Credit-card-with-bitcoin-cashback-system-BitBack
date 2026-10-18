@@ -5,6 +5,7 @@ import { ShieldCheck } from "@/components/icons";
 import { aiAPI } from "@/lib/api";
 import { sats, titleCase, usd } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Card, COLORS, ErrorNote, Header, Label, Loading, Num, Screen } from "@/components/ui";
 import { font, fontSize, iconSize } from "@/lib/theme";
 
@@ -39,7 +40,7 @@ export default function AIInsights() {
   const d = state.data;
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
       <Header back title="AI insights" subtitle="Four models, each run on your own spending history." />
 
       <Card onPress={() => router.push("/fraud")} style={{ marginBottom: 12 }}>

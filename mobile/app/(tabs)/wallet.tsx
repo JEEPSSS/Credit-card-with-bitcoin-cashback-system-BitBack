@@ -6,6 +6,7 @@ import { miscAPI, walletAPI } from "@/lib/api";
 import { relativeTime, sats, titleCase, usd } from "@/lib/format";
 import { COLORS, CONTROL_HIT_SLOP, MIN_CONTROL_HEIGHT, font, fontSize, radius, space } from "@/lib/theme";
 import { useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { ChartSkeleton } from "@/components/Skeleton";
 import { Odometer } from "@/components/Odometer";
 import { Async, Card, Divider, Header, Label, Num, Screen } from "@/components/ui";
@@ -34,7 +35,7 @@ export default function WalletScreen() {
   );
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
       <Header title="Wallet" />
 
       <Async state={state} skeleton={<ChartSkeleton />}>

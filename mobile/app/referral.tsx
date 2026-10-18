@@ -4,6 +4,7 @@ import * as Clipboard from "expo-clipboard";
 import { miscAPI } from "@/lib/api";
 import { sats } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Button, Card, COLORS, ErrorNote, Header, Label, Loading, Num, Screen } from "@/components/ui";
 import { font, fontSize } from "@/lib/theme";
 
@@ -32,7 +33,7 @@ export default function Referral() {
   const d = state.data;
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
       <Header back title="Referrals" subtitle={`You earn ${sats(d.mine.referrer_bonus)} sats per signup. They get ${sats(d.mine.welcome_bonus)}.`} />
       <Card style={{ alignItems: "center", paddingVertical: 28, marginBottom: 20 }}>
         <Label>Your code</Label>

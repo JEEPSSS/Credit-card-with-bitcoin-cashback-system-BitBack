@@ -5,6 +5,7 @@ import { aiAPI, analyticsAPI, rewardsAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { sats, titleCase, usd } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import type { Badge, CategorySpend } from "@/lib/types";
 import { Button, Card, COLORS, ErrorNote, Header, Label, Loading, Num, Screen } from "@/components/ui";
 import { font, fontSize, iconSize } from "@/lib/theme";
@@ -35,7 +36,7 @@ export default function Profile() {
   const lvl = summary.level;
 
   return (
-    <Screen>
+    <Screen refreshError={refreshError(state)} onRetry={state.reload}>
       <Header back title="Profile" />
 
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24 }}>

@@ -3,6 +3,7 @@ import { View, Text, Pressable, Modal } from "react-native";
 import { aiAPI, rewardsAPI } from "@/lib/api";
 import { pct, titleCase, usd } from "@/lib/format";
 import { useAction, useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import type { BoostOption } from "@/lib/types";
 import { Button, Card, COLORS, ErrorNote, Header, InlineError, Label, Loading, Num, Screen } from "@/components/ui";
 import { Flame, Sparkles, iconNamed } from "@/components/icons";
@@ -44,7 +45,7 @@ export default function Boosts() {
   const pick = rec.has_enough_data ? rec.top_pick : null;
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
       <Header title="Boosts" subtitle="Double the cashback in one category for 30 days. One boost at a time." />
 
       {boosts.active && (

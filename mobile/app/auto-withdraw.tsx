@@ -4,6 +4,7 @@ import { configAPI } from "@/lib/api";
 import { sats } from "@/lib/format";
 import type { AutoWithdrawConfig } from "@/lib/types";
 import { useAction, useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Button, Card, COLORS, ErrorNote, Header, InlineError, Loading, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
 import { font, fontSize } from "@/lib/theme";
@@ -40,7 +41,7 @@ export default function AutoWithdraw() {
   const error = save.error;
 
   return (
-    <Screen>
+    <Screen refreshError={refreshError(state)} onRetry={state.reload}>
       <Header back title="Auto-withdraw" subtitle="Send your sats to your own wallet once the balance passes a threshold." />
       <Card style={{ marginBottom: 20 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>

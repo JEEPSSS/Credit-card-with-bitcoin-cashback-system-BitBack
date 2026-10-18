@@ -4,6 +4,7 @@ import * as Clipboard from "expo-clipboard";
 import { securityAPI, messageFor } from "@/lib/api";
 import type { TwoFactorSetup } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Button, Card, COLORS, ErrorNote, Header, InlineError, Label, Loading, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
 import { font, fontSize } from "@/lib/theme";
@@ -44,7 +45,7 @@ export default function Security() {
   }
 
   return (
-    <Screen>
+    <Screen refreshError={refreshError(state)} onRetry={state.reload}>
       <Header back title="Security" subtitle="Two-factor authentication adds a code from your authenticator app at sign-in." />
 
       <Card style={{ marginBottom: 20 }}>

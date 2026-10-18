@@ -4,6 +4,7 @@ import { Bell, iconNamed } from "@/components/icons";
 import { miscAPI } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { useAction, useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Button, COLORS, Empty, ErrorNote, Header, InlineError, Loading, Screen } from "@/components/ui";
 import { font, fontSize, iconSize } from "@/lib/theme";
 
@@ -27,7 +28,7 @@ export default function Notifications() {
   const d = state.data;
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
       <Header back title="Notifications" subtitle={d.unread_count > 0 ? `${d.unread_count} unread` : undefined} />
       {d.unread_count > 0 && (
         <Button

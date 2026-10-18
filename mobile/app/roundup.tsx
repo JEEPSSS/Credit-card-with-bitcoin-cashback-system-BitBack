@@ -3,6 +3,7 @@ import { View, Text, Switch, Pressable } from "react-native";
 import { configAPI, messageFor } from "@/lib/api";
 import type { RoundUpConfig } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Card, COLORS, ErrorNote, Header, InlineError, Label, Loading, Screen } from "@/components/ui";
 import { font, fontSize } from "@/lib/theme";
 
@@ -45,7 +46,7 @@ export default function RoundUp() {
   };
 
   return (
-    <Screen>
+    <Screen refreshError={refreshError(state)} onRetry={state.reload}>
       <Header back title="Round-up" subtitle="Round every purchase up to the next dollar and convert the difference to sats." />
       <InlineError message={saveError} style={{ marginTop: 0, marginBottom: 12 }} />
       <Card style={{ marginBottom: 20 }}>

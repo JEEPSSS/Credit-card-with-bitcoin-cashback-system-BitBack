@@ -15,10 +15,12 @@ import { WakeBanner } from "@/components/WakeBanner";
 export { COLORS };
 
 export function Screen({
-  children, scroll = true, onRefresh, refreshing = false, padded = true,
+  children, scroll = true, onRefresh, refreshing = false, padded = true, refreshError, onRetry,
 }: {
   children: ReactNode; scroll?: boolean; onRefresh?: () => void;
   refreshing?: boolean; padded?: boolean;
+  /** A failed reload over data still on screen; see lib/screenState.ts. */
+  refreshError?: string | null; onRetry?: () => void;
 }) {
   const inner = (
     <View style={{ paddingHorizontal: padded ? space.lg : 0, paddingBottom: space["2xl"] }}>
@@ -28,6 +30,7 @@ export function Screen({
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
       <WakeBanner />
+      <RefreshNote message={refreshError} onRetry={onRetry ?? onRefresh} />
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -181,6 +184,29 @@ export function ErrorNote({ message, onRetry }: { message: string; onRetry?: () 
 }
 
 /**
+ * "Couldn't refresh" over figures that are still the last ones loaded. Shown
+ * above the content rather than in place of it: the old data is still useful,
+ * as long as the screen says it may be out of date.
+ */
+function RefreshNote({ message, onRetry }: { message?: string | null; onRetry?: () => void }) {
+  if (!message) return null;
+  return (
+    <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.refreshNote}>
+      <Text style={styles.refreshText}>Couldn&apos;t refresh, so this may be out of date. {message}</Text>
+      {onRetry ? (
+        <Pressable
+          onPress={onRetry}
+          accessibilityRole="button"
+          style={styles.refreshRetry}
+        >
+          <Text style={styles.refreshRetryText}>Try again</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/**
  * A failure shown next to the control that caused it. Announced when it
  * appears (WCAG 2.2 4.1.3, status messages): otherwise a screen reader user
  * presses a button and hears nothing at all when it fails.
@@ -270,5 +296,17 @@ const styles = StyleSheet.create({
   },
   loading: { paddingVertical: 64, alignItems: "center" },
   errorText: { color: COLORS.text, fontSize: fontSize.caption, lineHeight: 20 },
+  refreshNote: {
+    flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space.sm,
+    marginHorizontal: space.lg, marginTop: space.sm, paddingLeft: space.md,
+    backgroundColor: COLORS.surface, borderColor: COLORS.dangerBorder, borderWidth: 1,
+    borderRadius: radius.control,
+  },
+  refreshText: {
+    color: COLORS.text, fontSize: fontSize.caption, lineHeight: 18,
+    flex: 1, minWidth: 160, paddingVertical: space.sm,
+  },
+  refreshRetry: { minHeight: MIN_TOUCH_TARGET, justifyContent: "center", paddingHorizontal: space.md },
+  refreshRetryText: { color: COLORS.primary, fontSize: fontSize.caption, fontFamily: font.medium },
   inlineError: { color: COLORS.danger, fontSize: fontSize.caption, lineHeight: 20, marginTop: space.md },
 });
