@@ -23,8 +23,8 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
-function DigitColumn({ value, height, fontSize, color, index, instant }: {
-  value: number; height: number; fontSize: number; color: string;
+function DigitColumn({ value, height, lineHeight, fontSize, color, index, instant }: {
+  value: number; height: number; lineHeight: number; fontSize: number; color: string;
   index: number; instant: boolean;
 }) {
   const offset = useSharedValue(0);
@@ -52,7 +52,7 @@ function DigitColumn({ value, height, fontSize, color, index, instant }: {
             maxFontSizeMultiplier={MAX_DISPLAY_FONT_SCALE}
             style={{
               height,
-              lineHeight: height,
+              lineHeight,
               fontSize,
               color,
               fontFamily: font.mono,
@@ -75,7 +75,11 @@ export function Odometer({
   const reduced = useReducedMotion();
   // The digits scale with the system text size, so the window they roll
   // behind must too; sized from the unscaled font, large text was clipped.
+  // The Text's own lineHeight is given unscaled: Android and iOS scale
+  // lineHeight with the font, and passing the scaled height scaled it twice,
+  // which pushed each digit below its window (found at 130% and 200% text).
   const height = scaledLineHeight(fontSize, useWindowDimensions().fontScale);
+  const lineHeight = scaledLineHeight(fontSize, 1);
   const rounded = Math.round(value ?? 0);
   const chars = rounded.toLocaleString("en-US").split("");
 
@@ -92,7 +96,7 @@ export function Odometer({
             maxFontSizeMultiplier={MAX_DISPLAY_FONT_SCALE}
             style={{
               height,
-              lineHeight: height,
+              lineHeight,
               fontSize,
               color,
               fontFamily: font.mono,
@@ -107,6 +111,7 @@ export function Odometer({
             index={chars.length - i}
             value={Number(c)}
             height={height}
+            lineHeight={lineHeight}
             fontSize={fontSize}
             color={color}
             instant={reduced}

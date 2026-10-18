@@ -9,6 +9,7 @@ import { sats, usd } from "@/lib/format";
 import { COLORS, font, fontSize, iconSize, radius, space } from "@/lib/theme";
 import type { Transaction } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Odometer } from "@/components/Odometer";
 import { PaymentCard } from "@/components/PaymentCard";
 import { ReceiptRow } from "@/components/ReceiptRow";
@@ -42,9 +43,9 @@ export default function Home() {
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
       <View style={styles.topBar}>
-        <View>
+        <View style={{ flexShrink: 1 }}>
           <Text style={styles.greeting}>{greeting}</Text>
           <Text style={styles.name}>{user?.display_name ?? "there"}</Text>
         </View>
@@ -245,6 +246,7 @@ const styles = StyleSheet.create({
   },
   priceRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: space.xs + 2,
     marginTop: space.lg,
@@ -261,7 +263,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: space.md,
   },
-  statHead: { flexDirection: "row", alignItems: "center", gap: space.xs + 1 },
+  // Wraps so a tile's label and icon stay inside it at large text sizes.
+  statHead: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space.xs + 1 },
   statLabel: { color: COLORS.muted, fontSize: fontSize.caption },
   statValue: {
     color: COLORS.text,

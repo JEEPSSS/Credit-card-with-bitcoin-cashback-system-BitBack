@@ -5,6 +5,7 @@ import { miscAPI } from "@/lib/api";
 import { usd } from "@/lib/format";
 import type { PriceAlert } from "@/lib/types";
 import { useAction, useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Button, Card, COLORS, Empty, ErrorNote, Header, InlineError, Loading, Num, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
 import { MIN_TOUCH_TARGET, fontSize, iconSize } from "@/lib/theme";
@@ -56,7 +57,7 @@ export default function Alerts() {
   const d = state.data;
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
       <Header back title="Price alerts" subtitle={`Bitcoin is ${usd(d.btc.price)} right now.`} />
 
       <Card style={{ marginBottom: 24 }}>

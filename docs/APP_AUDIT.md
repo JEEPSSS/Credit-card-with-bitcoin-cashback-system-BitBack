@@ -74,15 +74,17 @@ app complies with MASVS.
 | E1 | Errors | WCAG 3.3.1; Nielsen #9 | Forgot-password, alert create and delete, goal delete, round-up and mark-all-read failed silently | 3 | Fixed |
 | E2 | Errors | WCAG 4.1.3 | No error message was announced to a screen reader when it appeared | 2 | Fixed |
 | E3 | Errors | WCAG 3.3.4; Nielsen #3, #5 | Goals and price alerts deleted on the first tap | 2 | Fixed: confirmation |
+| E4 | Errors | Nielsen #1, #9; WCAG 4.1.3 | Found on a device: a refresh that failed (offline, server down) left the old figures on screen with no sign they were out of date. Seen on Home; the same pattern was on all 14 data screens | 2 | Fixed in `2ed0126`: "Couldn't refresh" notice with retry; needs a device re-check |
 | A1 | Accessibility | WCAG 1.4.3 | Placeholder text 2.06:1 on fields | 2 | Fixed: 4.76:1 |
 | A2 | Accessibility | WCAG 1.4.11 | Text field edges 1.38:1 against the field | 2 | Fixed: 3.50:1 |
 | A3 | Accessibility | WCAG 4.1.2 | Radio buttons exposed `selected`, which a radio does not announce; survey options exposed no state | 2 | Fixed |
 | A4 | Accessibility | WCAG 1.4.1, 1.3.1 | Boost rows told "now" and "boosted" rates apart by colour only; spoken name omitted both | 2 | Fixed |
-| A5 | Accessibility | WCAG 1.4.4 | Balance odometer clipped its digits at large system text sizes | 2 | Fixed |
+| A5 | Accessibility | WCAG 1.4.4 | Balance odometer clipped its digits at large system text sizes | 2 | Fixed only on the second attempt: the first fix scaled the digits' line height twice and still clipped on a device; corrected in `467d1b7` |
 | A6 | Accessibility | WCAG 1.3.5; Android Autofill_Hints | No autofill hints on email, password, name or one-time-code fields | 2 | Fixed |
 | A7 | Accessibility | WCAG 1.3.1 | No screen headings exposed as headings | 1 | Fixed |
 | A8 | Accessibility | WCAG 4.1.2 | Sign-in links and "See all" had no role | 1 | Fixed |
-| A9 | Accessibility | Android Touch_Target_Size (48 dp) | Chips, presets, period tabs and text links 33-41 dp tall | 1 | Fixed: 48 dp touch area. A device measurement then found the History "All" chip 45.7 dp wide; fixed with a 48 dp minimum width |
+| A9 | Accessibility | Android Touch_Target_Size (48 dp) | Chips, presets, period tabs and text links 33-41 dp tall | 1 | Fixed: 48 dp touch area. A device measurement then found the History "All" chip 45.7 dp wide; fixed with a 48 dp minimum width and remeasured at 48.00 dp |
+| A11 | Accessibility | WCAG 1.4.4 | Found on a device at 130% and 200% text: the payment card's lettering, amount presets, stat tiles and reward figures clipped | 2 | Fixed in `467d1b7` (card text capped at 1.2×, rows wrap); needs a device re-check |
 | U1 | Usability | Nielsen #1 | "Copy key" gave no sign it had copied | 1 | Fixed |
 | U2 | Usability | Nielsen #9 | Invalid amount left a greyed-out button with no reason | 1 | Fixed |
 | R1 | Release | EAS Update debugging | No way to see on a phone which update it runs | 2 | Fixed: build info on More |
@@ -92,7 +94,8 @@ app complies with MASVS.
 | M1 | Privacy | MASVS-PRIVACY-1; Android Minimize_Permissions | The APK requests five permissions the app never uses: read and write external storage, draw over other apps, biometric and fingerprint | 1 | Open: needs `blockedPermissions` in `app.json` and a new APK |
 
 Two problems were rated severity 3 (S1 and E1) and none severity 4; both are
-fixed in the app. A10 was found afterwards and fixed in a separate commit.
+fixed in the app. A10, then E4 and A11, were found later on a device and fixed
+in separate commits.
 
 ## 1. Accessibility: WCAG 2.2 AA and Android accessibility
 
@@ -140,7 +143,7 @@ tokens") so a token change cannot silently fail them.
 | 1.3.1 Info and relationships | **Fixed (A7)** | Screen titles and section labels now carry `accessibilityRole="header"`, so a screen reader can move by heading (`components/ui.tsx`). |
 | 1.3.5 Identify input purpose | **Fixed (A6)** | `autoComplete` and iOS `textContentType` on email, current and new password, name and one-time code. The source for Android (core app quality, Autofill_Hints) asks for the same. |
 | 1.4.1 Use of colour | **Fixed (A4)** | Boost rows showed the base and boosted rates as two stacked numbers, grey and orange. Now "1.5% → 3.0%" with an "Active" label (`app/(tabs)/boosts.tsx`). Price change, risk bands and password strength already had text. |
-| 1.4.4 Resize text | **Fixed (A5)**; rest Unverified | The odometer sized its digit window from the unscaled font, so system text scaling clipped the balance. Now `scaledLineHeight` (theme) grows the window with `fontScale`, capped at 1.6× with the text held to the same cap; tested. Other fixed-height text (tab bar labels) needs checking on a phone at 200%. |
+| 1.4.4 Resize text | **Failed on device, fixed, re-check pending (A5, A11)** | The odometer sized its digit window from the unscaled font, so system text scaling clipped the balance. The first fix grew the window with `fontScale` but also passed that scaled height as the digits' `lineHeight`, which Android and iOS scale again, so the digits still clipped at 130% and 200%; the line height is now given unscaled. The same device run found the payment card's text running off its fixed card shape, and rows that could not wrap (amount presets, stat tile headings, reward breakdown). Rows now wrap or shrink. The card's text is capped at 1.2×: a deliberate exception, because the card is one image to screen readers and its level and multiplier repeat at full size in the Level tile. Tab bar labels at 200% still need checking. |
 | 2.3.3 Animation from interactions | Pass (AAA, beyond the AA target) | Odometer, skeleton and survey honour reduce-motion (`lib/useReducedMotion.ts`); Reanimated layout animations follow the system setting by default. |
 | 1.3.2 Meaningful sequence; 2.4.3 Focus order | Pass by code; Unverified | Screen readers follow the order of the component tree, and on every screen it matches the visual order. Two things are positioned on top of other content: the unread dot on the bell (inside the bell's labelled button) and the wake banner (last in the tree, so reached last, but announced as it appears). Needs a TalkBack pass. |
 | 2.4.11 Focus not obscured (minimum) | **Fixed (A10)**; rest Unverified | `components/WakeBanner.tsx` was drawn over the top of the screen, from about 8 to 44 pt below the safe-area inset, for as long as the server takes to wake. It set no `pointerEvents`, so it also took the touches on that strip, which covers most of the back button (8-56 pt) and of the Home bell. It is now the first thing inside each screen (`Screen` in `components/ui.tsx`, and the start screen), so it pushes the content down instead of covering it, and only the screen in front shows it. A screen opened during a wake-up is told at once (`lib/wake.ts`, tested). Whether the keyboard hides inputs in the bottom sheets (new goal, add sats) needs a phone. |
@@ -256,9 +259,10 @@ screen imported it. Whether that is visible as startup time on a phone was
   explains the up-to-60-second cold start of the free server.
 - Measured before the audit update, signed out, cold launches 10 s apart on
   an Android emulator: TotalTime 1921, 775, 730, 728, 903 ms, median 775 ms.
-  The first run is the slowest, as expected for a first cold start. The same
-  measurement after the update has not been taken yet, so no effect of the
-  bundle reduction on startup is claimed.
+  The first run is the slowest, as expected for a first cold start.
+- After the update, same method: 1883, 736, 589, 557, 1402 ms, median 736 ms.
+  The 39 ms difference in medians is smaller than the spread within either
+  set, so no startup improvement from the smaller bundle is claimed.
 
 ### React Native guidance
 
@@ -361,7 +365,7 @@ else's.
 | 7 | Offline | Airplane mode | Open each data screen, pull to refresh | A retryable error, never an endless spinner or a sign-out |
 | 8 | Session expiry | Signed in on the phone with a disposable account; delete that account through the API from a terminal (the live server does not hand out reset tokens) | Return to the app and refresh | Sent to sign-in; a network failure (check 7) does not do this |
 
-### Results so far (18 October 2026, Android emulator, 420 dpi)
+### Round 1 (18 October 2026, Android emulator, 420 dpi)
 
 Run against the published update. A smoke test came first: empty sign-in
 fields, sign-up, a $25 purchase (308 sats), the invalid-amount message, boost
@@ -381,6 +385,29 @@ history to forecast from.
 | 7, 8 | Not run | - |
 | Touch targets | **Fail, then fixed** | History "All" 45.7 dp wide; see 2.5.8 and A9 |
 
+### Round 2 (same day and device, update `01a14fb4`)
+
+Update group `1b587b8b-33ff-4411-9284-65b1cedb5545`, Android update
+`01a14fb4`, shown on the More screen; no rollback needed. Both disposable
+accounts were deleted, text size restored to 100% and the network re-enabled.
+Android showed a "System UI not responding" dialog once during font testing;
+BitBack did not crash.
+
+| # | Result | Evidence and note |
+|---|--------|-------------------|
+| History chips | Pass | "All" 45.71 → 48.00 dp wide; "Bills" 55.62 dp |
+| 1 | Unverified | Banner layout seen; the tap test after 15 idle minutes was not completed |
+| 2 | Unverified | Roles and checked states confirmed again; speech not observed |
+| 3 | **Fail → fixed, re-check pending** | Clipping at 130% and 200%: Home, amount presets, reward figures (A5, A11) |
+| 4 | Unverified | The full-height keyboard could not be docked reliably |
+| 5 | Pass | Median 736 ms after vs 775 ms before; within noise |
+| 6 | Pass | Update `01a14fb4` running |
+| 7 | **Fail → fixed, re-check pending** | Home gave no error or retry when refresh failed offline; Wallet and Boosts did; no sign-out, no endless spinner (E4) |
+| 8 | Pass | Deleting the account through the API sent the app to sign-in on refresh |
+
+Housekeeping done in this round: the four merged branches were deleted, and the
+tag `before-app-audit` was pushed at `2eed728`.
+
 ## Tests added
 
 - `mobile/lib/format.test.ts`: plain-language fraud features, scorer names,
@@ -389,9 +416,11 @@ history to forecast from.
 - `mobile/lib/build.test.ts`: the four states the build line reports.
 - `mobile/lib/wake.test.ts`: a screen opened while the server is waking shows the
   banner at once (A10).
+- `mobile/lib/screenState.test.ts`: when a failed refresh is shown over data still on
+  screen (E4).
 - `tests/test_icon_names.py`: every icon name the backend can send is shipped.
 
-Front-end tests 39 → 55; backend 236 → 239 (plus 2 that run only on Postgres).
+Front-end tests 39 → 58; backend 236 → 239 (plus 2 that run only on Postgres).
 
 ## Sources
 
@@ -430,16 +459,18 @@ Primary sources, as recommended for citation:
 Everything here can be taken back, in whole or in part, without losing history.
 Each undo is a new commit, so an undo can itself be undone.
 
-**Restore point.** Commit `2eed728` is `main` as it was before any of this, and
-stays in the history whatever happens next. `git diff 2eed728 main` shows
-everything that changed since. To give it a name, tag it from your own machine:
-`git tag before-app-audit 2eed728 && git push origin before-app-audit`.
+**Restore point.** The tag `before-app-audit` marks commit `2eed728`, `main` as
+it was before any of this. `git diff before-app-audit main` shows everything
+that changed since.
 
 **In the code** (after the pull request is merged with a merge commit):
 
 | To undo | Run on `main`, then `git push` |
 |---------|--------------------------------|
 | Only the wake banner change (A10) | `git revert e8db53a` |
+| Only the large-text fixes (A5, A11) | `git revert 467d1b7` |
+| Only the offline notice (E4) | `git revert 2ed0126` |
+| Only the History chip width | `git revert 96837ac` |
 | One fix | `git revert <its commit>`; `git log --oneline 2eed728..main` lists them |
 | The whole audit at once | `git revert -m 1 <merge commit>`; `git log --merges -1` shows it |
 

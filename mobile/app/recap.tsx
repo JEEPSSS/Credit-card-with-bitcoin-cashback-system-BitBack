@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { analyticsAPI } from "@/lib/api";
 import { sats, titleCase, usd } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { COLORS, Empty, ErrorNote, Header, Loading, Screen } from "@/components/ui";
 import { font, fontSize } from "@/lib/theme";
 
@@ -51,7 +52,7 @@ export default function Recap() {
   const last = slide === slides.length - 1;
 
   return (
-    <Screen scroll={false}>
+    <Screen scroll={false} refreshError={refreshError(state)} onRetry={state.reload}>
       <Header back title="Your month" subtitle={d.period} />
       <Pressable
         onPress={() => (last ? router.back() : setSlide(slide + 1))}

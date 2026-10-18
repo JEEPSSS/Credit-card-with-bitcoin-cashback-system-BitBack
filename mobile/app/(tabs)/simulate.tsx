@@ -7,8 +7,8 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { miscAPI, newIdempotencyKey, rewardsAPI, transactionAPI } from "@/lib/api";
 import { pct, sats, titleCase, usd } from "@/lib/format";
 import {
-  CATEGORY_ICON, COLORS, CONTROL_HIT_SLOP, MIN_CONTROL_HEIGHT, font, fontSize, iconSize, radius,
-  space,
+  CATEGORY_ICON, COLORS, CONTROL_HIT_SLOP, MIN_CONTROL_HEIGHT, MIN_TOUCH_TARGET, font, fontSize,
+  iconSize, radius, space,
 } from "@/lib/theme";
 import type { Category, RewardBreakdown, TransactionResult } from "@/lib/types";
 import { useAction, useApi } from "@/lib/useApi";
@@ -326,9 +326,14 @@ const styles = StyleSheet.create({
     fontSize: fontSize.title,
     fontFamily: font.mono,
   },
-  presets: { flexDirection: "row", gap: space.sm, marginBottom: space.xl },
+  // Each preset is as wide as its label needs and shares out the rest, so at
+  // large text sizes the row wraps instead of clipping "$100".
+  presets: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginBottom: space.xl },
   preset: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "auto",
+    minWidth: MIN_TOUCH_TARGET,
+    paddingHorizontal: space.sm,
     minHeight: MIN_CONTROL_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
@@ -351,10 +356,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
     borderWidth: 1,
   },
-  previewHead: { flexDirection: "row", alignItems: "baseline", gap: space.sm, marginTop: space.sm },
+  previewHead: {
+    flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", gap: space.sm, marginTop: space.sm,
+  },
   previewUnit: { color: COLORS.muted, fontSize: fontSize.caption },
-  row: { flexDirection: "row", justifyContent: "space-between" },
-  rowLabel: { color: COLORS.muted, fontSize: fontSize.caption },
+  // The label gives way and wraps; the figure beside it never does.
+  row: { flexDirection: "row", justifyContent: "space-between", gap: space.md },
+  rowLabel: { color: COLORS.muted, fontSize: fontSize.caption, flexShrink: 1 },
   resultHead: { paddingTop: 64, alignItems: "center" },
   resultCaption: { color: COLORS.muted, fontSize: fontSize.caption, textAlign: "center" },
   resultCardTitle: { color: COLORS.text, fontSize: fontSize.caption, fontFamily: font.medium },

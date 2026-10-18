@@ -4,6 +4,7 @@ import Svg, { Circle } from "react-native-svg";
 import { aiAPI } from "@/lib/api";
 import { fraudFeature, relativeTime, riskBand, scoredBy, titleCase, usd } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Card, COLORS, Empty, ErrorNote, Header, Label, Loading, Num, Screen } from "@/components/ui";
 import { RISK_FLAG_THRESHOLD, font, fontSize } from "@/lib/theme";
 
@@ -29,7 +30,7 @@ export default function Fraud() {
   const s = d.summary;
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
       <Header back title="Fraud protection" subtitle="Every transaction is scored against your own spending pattern." />
 
       <Card style={{ alignItems: "center", paddingVertical: 28 }}>

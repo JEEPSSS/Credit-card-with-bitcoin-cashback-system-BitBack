@@ -4,6 +4,7 @@ import { goalsAPI, walletAPI } from "@/lib/api";
 import { sats } from "@/lib/format";
 import type { Goal } from "@/lib/types";
 import { useAction, useApi } from "@/lib/useApi";
+import { refreshError } from "@/lib/screenState";
 import { Button, Card, COLORS, Empty, ErrorNote, Header, InlineError, Loading, Num, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
 import { font, fontSize } from "@/lib/theme";
@@ -78,7 +79,7 @@ export default function Goals() {
   const d = state.data;
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
+    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
       <Header back title="Savings goals" subtitle={`${sats(d.wallet.balance_sats)} sats available to allocate.`} />
       <Button label="New goal" onPress={() => setCreating(true)} style={{ marginBottom: 20 }} />
       <InlineError message={removeGoal.error} style={{ marginTop: 0, marginBottom: 12 }} />
