@@ -63,22 +63,24 @@ export default function AIInsights() {
             <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>sats</Text>
           </View>
           <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 6 }}>
-            Range {sats(d.forecast.lower_bound)}–{sats(d.forecast.upper_bound)} · trending {d.forecast.trend_direction}
+            {Math.round(d.forecast.interval_level * 100)}% likely between {sats(d.forecast.lower_bound)} and{" "}
+            {sats(d.forecast.upper_bound)} · trending {d.forecast.trend_direction}
           </Text>
           <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
             <ModelBox
-              title="Linear regression"
-              value={sats(d.forecast.model_comparison.linear_regression.predicted_sats)}
-              note={`R² ${d.forecast.model_comparison.linear_regression.r2}`}
+              title="Window mean"
+              value={sats(d.forecast.model_comparison.window_mean.predicted_sats)}
+              note={`${d.forecast.model_comparison.window_mean.weeks_averaged} weeks averaged`}
             />
             <ModelBox
-              title="Damped Holt's"
-              value={sats(d.forecast.model_comparison.holt_damped.predicted_sats)}
-              note={`α ${d.forecast.model_comparison.holt_damped.alpha} · φ ${d.forecast.model_comparison.holt_damped.phi}`}
+              title="Level smoothing"
+              value={sats(d.forecast.model_comparison.level_only.predicted_sats)}
+              note={`α ${d.forecast.model_comparison.level_only.alpha}`}
             />
           </View>
           <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 12, lineHeight: 18 }}>
-            Blended 60/40 toward Holt's, which reacts faster to a change in your spending.
+            An even blend of the two: the average is steadier, smoothing reacts faster when your
+            spending changes.
           </Text>
         </Card>
       )}

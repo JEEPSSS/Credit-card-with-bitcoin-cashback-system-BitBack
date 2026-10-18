@@ -236,17 +236,23 @@ export type Forecast =
       daily_average_sats: number;
       weekly_average_sats: number;
       days_of_data: number;
+      /** The range is a prediction interval at this level (0.8 = 80%). */
+      interval_level: number;
+      // Mirrors app/ml_forecast.py. This block once described a retired model
+      // (linear regression + Holt) and crashed the AI insights screen for any
+      // account with enough history to get a forecast.
       model_comparison: {
-        linear_regression: { predicted_sats: number; r2: number; slope_per_week: number };
-        holt_damped: {
+        window_mean: { predicted_sats: number; weeks_averaged: number };
+        level_only: {
           predicted_sats: number;
           alpha: number;
           beta: number;
           phi: number;
           level: number;
-          trend: number;
+          trend_state: number;
         };
-        blend_weights: { holt: number; linear: number };
+        trend_estimate: { slope_per_week: number; r2: number; used_for: string };
+        blend_weights: { level_only: number; window_mean: number };
       };
     };
 
