@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { authAPI } from "@/lib/api";
-import { Button, Card, COLORS, Header, Screen } from "@/components/ui";
+import { authAPI, messageFor } from "@/lib/api";
+import { Button, COLORS, ErrorNote, Header, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
 import { fontSize } from "@/lib/theme";
 
@@ -35,8 +35,8 @@ export default function ResetPassword() {
     try {
       await authAPI.resetPassword({ token: token!, new_password: pw });
       setDone(true);
-    } catch (e: any) {
-      setError(e.friendlyMessage);
+    } catch (e) {
+      setError(messageFor(e));
     } finally {
       setBusy(false);
     }
@@ -54,7 +54,15 @@ export default function ResetPassword() {
   return (
     <Screen>
       <Header back title="Choose a new password" />
-      <Field label="New password" value={pw} onChangeText={setPw} secureTextEntry placeholder="At least 8 characters" />
+      <Field
+        label="New password"
+        value={pw}
+        onChangeText={setPw}
+        secureTextEntry
+        autoComplete="new-password"
+        textContentType="newPassword"
+        placeholder="At least 8 characters"
+      />
       <View style={{ flexDirection: "row", gap: 4, marginTop: -8, marginBottom: 8 }}>
         {[0, 1, 2, 3, 4].map((i) => (
           <View
@@ -66,20 +74,30 @@ export default function ResetPassword() {
           />
         ))}
       </View>
-      {pw.length > 0 && <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginBottom: 16 }}>{s.label}</Text>}
+      {pw.length > 0 && (
+        <Text
+          accessibilityLabel={`Password strength: ${s.label}`}
+          accessibilityLiveRegion="polite"
+          style={{ color: COLORS.muted, fontSize: fontSize.caption, marginBottom: 16 }}
+        >
+          {s.label}
+        </Text>
+      )}
       <Field
         label="Confirm password"
         value={confirm}
         onChangeText={setConfirm}
         secureTextEntry
+        autoComplete="new-password"
+        textContentType="newPassword"
         placeholder="Type it again"
-        hint={confirm.length > 0 && !matches ? "These don't match yet." : undefined}
+        error={confirm.length > 0 && !matches ? "These don't match yet." : undefined}
       />
       <Button label="Update password" onPress={submit} loading={busy} disabled={!matches || pw.length < 8} />
       {error ? (
-        <Card style={{ marginTop: 20, borderColor: COLORS.dangerBorder }}>
-          <Text style={{ color: COLORS.text, fontSize: fontSize.caption }}>{error}</Text>
-        </Card>
+        <View style={{ marginTop: 20 }}>
+          <ErrorNote message={error} />
+        </View>
       ) : null}
     </Screen>
   );

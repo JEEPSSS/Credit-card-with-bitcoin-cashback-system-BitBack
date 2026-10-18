@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
 import Animated, {
   Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming,
 } from "react-native-reanimated";
 
-import { COLORS, font, motion, tracking } from "@/lib/theme";
+import { COLORS, MAX_DISPLAY_FONT_SCALE, font, motion, scaledLineHeight, tracking } from "@/lib/theme";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 
 /**
@@ -49,6 +49,7 @@ function DigitColumn({ value, height, fontSize, color, index, instant }: {
         {DIGITS.map((d) => (
           <Text
             key={d}
+            maxFontSizeMultiplier={MAX_DISPLAY_FONT_SCALE}
             style={{
               height,
               lineHeight: height,
@@ -72,7 +73,9 @@ export function Odometer({
   value: number; fontSize?: number; color?: string; suffix?: string;
 }) {
   const reduced = useReducedMotion();
-  const height = Math.round(fontSize * 1.25);
+  // The digits scale with the system text size, so the window they roll
+  // behind must too; sized from the unscaled font, large text was clipped.
+  const height = scaledLineHeight(fontSize, useWindowDimensions().fontScale);
   const rounded = Math.round(value ?? 0);
   const chars = rounded.toLocaleString("en-US").split("");
 
@@ -86,6 +89,7 @@ export function Odometer({
         c === "," ? (
           <Text
             key={`sep-${i}`}
+            maxFontSizeMultiplier={MAX_DISPLAY_FONT_SCALE}
             style={{
               height,
               lineHeight: height,
@@ -111,6 +115,7 @@ export function Odometer({
       )}
       {suffix ? (
         <Text
+          maxFontSizeMultiplier={MAX_DISPLAY_FONT_SCALE}
           style={{
             color: COLORS.muted,
             fontSize: fontSize * 0.4,

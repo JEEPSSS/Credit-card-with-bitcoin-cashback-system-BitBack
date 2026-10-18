@@ -17,7 +17,7 @@
  * makes the palette read as one decision. The bias is kept under 5% saturation
  * so it never tips into sepia, which is a different and much-copied look.
  *
- * Eleven steps rather than the three the app started with, because a dark
+ * Thirteen steps rather than the three the app started with, because a dark
  * interface separates surfaces by luminance steps of 3-5%, not by shadow:
  * a drop shadow on a near-black ground is invisible, so elevation has to be
  * carried by the surface itself and a hairline.
@@ -29,11 +29,13 @@ const ramp = {
   raised: '#1B1A19',   // controls on cards
   elevated: '#222120', // sheets, popovers
   hairline: '#272524', // list separators
-  border: '#322F2D',   // card and control edges
-  subtle: '#4D4946',   // disabled glyphs
-  muted: '#97918B',    // secondary text — 5.8:1 on canvas
+  border: '#322F2D',   // card edges and dividers - decorative, so no contrast minimum
+  subtle: '#4D4946',   // disabled glyphs - exempt from contrast as inactive
+  outline: '#716B66',  // text field edges - 3.5:1 on surface, WCAG 1.4.11's 3:1
+  faint: '#86817B',    // placeholder text - 4.8:1 on surface, WCAG 1.4.3's 4.5:1
+  muted: '#97918B',    // secondary text - 6.4:1 on canvas, 5.9:1 on surface
   bright: '#C9C3BC',   // emphasised secondary
-  text: '#F2F0EC',     // primary text — 16.4:1 on canvas
+  text: '#F2F0EC',     // primary text - 17.4:1 on canvas
 } as const;
 
 /**
@@ -48,7 +50,7 @@ const accent = {
   primaryPressed: '#D97C0E',
   soft: '#2A1D08',
   edge: '#4A3410',
-  onPrimary: '#1A1206',   // 12.1:1 on primary
+  onPrimary: '#1A1206',   // 8.1:1 on primary
 } as const;
 
 /**
@@ -71,7 +73,7 @@ export const color = {
   // Legacy aliases kept so call sites read naturally.
   bg: ramp.canvas,
   card: ramp.surface,
-  placeholder: ramp.subtle,
+  placeholder: ramp.faint,
   accentSurface: accent.soft,
   accentBorder: accent.edge,
   dangerBorder: semantic.dangerEdge,
@@ -203,8 +205,17 @@ export const radius = {
  */
 export const MIN_TOUCH_TARGET = 48;
 
-/** Secondary controls inside a row: still comfortably tappable at 40. */
+/** Secondary controls inside a row are drawn at 40 to keep rows compact. */
 export const MIN_CONTROL_HEIGHT = 40;
+
+/**
+ * Extra touch area above and below those 40pt controls so each still takes a
+ * 48dp press, the Android core app quality minimum. Wrapped rows of them sit
+ * 8 apart, so 4 each way meets the next row's without overlapping it; nothing
+ * is added at the sides, where neighbours can be closer.
+ */
+const slop = (MIN_TOUCH_TARGET - MIN_CONTROL_HEIGHT) / 2;
+export const CONTROL_HIT_SLOP = { top: slop, bottom: slop } as const;
 
 /**
  * ISO/IEC 7810 ID-1 — the standard every payment card in the world is cut to:
@@ -250,6 +261,23 @@ export const motion = {
 } as const;
 
 /**
+ * The display figure grows with the system text size up to this factor and no
+ * further: past it a seven-digit balance no longer fits a phone's width.
+ */
+export const MAX_DISPLAY_FONT_SCALE = 1.6;
+
+/**
+ * Row height for text set in a fixed-height box, such as an odometer column.
+ *
+ * Text scales with the system font size (WCAG 2.2 1.4.4, resize text) but a
+ * height computed from the unscaled size does not, so at large text the
+ * digits were clipped by their own column.
+ */
+export function scaledLineHeight(size: number, fontScale: number, max = MAX_DISPLAY_FONT_SCALE): number {
+  return Math.round(size * Math.min(Math.max(fontScale, 1), max) * 1.25);
+}
+
+/**
  * Balance and sats figures. Tabular figures stop digits jittering as values
  * update, which matters because the odometer animates.
  */
@@ -260,7 +288,7 @@ export const numeric = {
 
 /* ------------------------------------------------------------------ domain */
 
-/** Risk bands mirror the backend's ANOMALY_THRESHOLD of 60. */
+/** Risk bands mirror the backend's ANOMALY_THRESHOLD of 56. */
 export const RISK_FLAG_THRESHOLD = 56;
 export const RISK_WATCH_THRESHOLD = 30;
 

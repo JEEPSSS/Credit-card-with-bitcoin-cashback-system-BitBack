@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Home, Repeat, Wallet, Flame, LayoutGrid } from "lucide-react-native";
+import { Home, Repeat, Wallet, Flame, LayoutGrid } from "@/components/icons";
 import { COLORS } from "@/components/ui";
 import { MIN_TOUCH_TARGET, font, fontSize, iconSize } from "@/lib/theme";
 

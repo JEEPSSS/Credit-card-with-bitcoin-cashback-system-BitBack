@@ -2,19 +2,10 @@ import { useCallback } from "react";
 import { View, Text } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { aiAPI } from "@/lib/api";
-import { relativeTime, riskBand, titleCase, usd } from "@/lib/format";
+import { fraudFeature, relativeTime, riskBand, scoredBy, titleCase, usd } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
 import { Card, COLORS, Empty, ErrorNote, Header, Label, Loading, Num, Screen } from "@/components/ui";
-import { font, fontSize } from "@/lib/theme";
-
-const FEATURE_LABELS: Record<string, string> = {
-  amount_zscore: "Amount vs your average for this category",
-  category_frequency: "How often you use this category",
-  time_since_last_tx: "Gap since your last transaction",
-  hour_rarity: "How unusual this time of day is for you",
-  amount_vs_global_avg: "Amount vs your overall average",
-  merchant_is_new: "First time at this merchant",
-};
+import { RISK_FLAG_THRESHOLD, font, fontSize } from "@/lib/theme";
 
 export default function Fraud() {
   const state = useApi(
@@ -44,6 +35,13 @@ export default function Fraud() {
       <Card style={{ alignItems: "center", paddingVertical: 28 }}>
         <Gauge value={s.protection_score} />
         <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 14 }}>Protection score</Text>
+        {/* The name alone suggests a measure of how safe the account is. It is
+            the share of scored transactions that were not flagged. */}
+        <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 4, textAlign: "center" }}>
+          {s.total_transactions_analyzed > 0
+            ? `${s.protection_score}% of your scored transactions were not flagged`
+            : "No transactions scored yet"}
+        </Text>
       </Card>
 
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
@@ -77,14 +75,19 @@ export default function Fraud() {
                   </View>
                 </View>
                 <View style={{ marginTop: 14, gap: 5 }}>
-                  {Object.entries(f.features).map(([k, v]) => (
-                    <View key={k} style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                      <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, flex: 1 }}>{FEATURE_LABELS[k] ?? k}</Text>
-                      <Num size={fontSize.caption} color={COLORS.muted}>{typeof v === "number" ? v.toFixed(2) : String(v)}</Num>
-                    </View>
-                  ))}
+                  {Object.entries(f.features).map(([k, v]) => {
+                    const feature = fraudFeature(k, Number(v));
+                    return (
+                      <View key={k} style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+                        <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, flex: 1 }}>{feature.label}</Text>
+                        <Text style={{ color: COLORS.text, fontSize: fontSize.caption, textAlign: "right", flexShrink: 1 }}>
+                          {feature.value}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
-                <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 10 }}>{f.model_version}</Text>
+                <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 10 }}>{scoredBy(f.model_version)}</Text>
               </Card>
             );
           })}
@@ -95,8 +98,10 @@ export default function Fraud() {
         <Text style={{ color: COLORS.text, fontSize: fontSize.caption, fontFamily: font.medium }}>How this works</Text>
         <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 8, lineHeight: 20 }}>
           An Isolation Forest learns what your normal spending looks like across six features, then measures how far
-          each new transaction sits from it. Once you have enough history the model trains on your own transactions;
-          before that a simpler rule set covers the gap. A score of 56 or above marks a transaction for review.
+          each new transaction sits from it. From about your 70th purchase the model trains on your own transactions;
+          before that a simpler rule set covers the gap. A score of {RISK_FLAG_THRESHOLD} or above marks a transaction
+          for review. Tested on simulated cardholders, it caught 96% of planted fraud and about one flag in six was a
+          false alarm: a clean score is not a guarantee, and a flag is not proof.
         </Text>
       </Card>
     </Screen>

@@ -4,7 +4,7 @@ import * as Clipboard from "expo-clipboard";
 import { securityAPI, messageFor } from "@/lib/api";
 import type { TwoFactorSetup } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { Button, Card, COLORS, ErrorNote, Header, Label, Loading, Screen } from "@/components/ui";
+import { Button, Card, COLORS, ErrorNote, Header, InlineError, Label, Loading, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
 import { font, fontSize } from "@/lib/theme";
 
@@ -13,6 +13,7 @@ export default function Security() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const state = useApi(useCallback(() => securityAPI.status(), []));
 
@@ -76,7 +77,16 @@ export default function Security() {
             >
               {setup.secret}
             </Text>
-            <Button label="Copy key" variant="secondary" style={{ marginTop: 14 }} onPress={() => Clipboard.setStringAsync(setup.secret)} />
+            {/* Confirms the copy; tapping before gave no sign anything happened. */}
+            <Button
+              label={copied ? "Copied" : "Copy key"}
+              variant="secondary"
+              style={{ marginTop: 14 }}
+              onPress={async () => {
+                await Clipboard.setStringAsync(setup.secret);
+                setCopied(true);
+              }}
+            />
           </Card>
 
           <Card style={{ marginBottom: 16 }}>
@@ -122,7 +132,7 @@ export default function Security() {
         </>
       )}
 
-      {error ? <Text style={{ color: COLORS.danger, fontSize: fontSize.caption, marginTop: 16 }}>{error}</Text> : null}
+      <InlineError message={error} style={{ marginTop: 16 }} />
     </Screen>
   );
 }

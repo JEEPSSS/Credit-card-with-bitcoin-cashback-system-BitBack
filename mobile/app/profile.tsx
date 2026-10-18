@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { View, Text } from "react-native";
-import * as Icons from "lucide-react-native";
+import { Award, iconNamed } from "@/components/icons";
 import { aiAPI, analyticsAPI, rewardsAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { sats, titleCase, usd } from "@/lib/format";
@@ -87,9 +87,7 @@ export default function Profile() {
       <Label>Badges · {summary.badges.earned_count} of {summary.badges.total_count}</Label>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12, marginBottom: 24 }}>
         {summary.badges.all.map((b: Badge) => {
-          const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[
-            b.icon.split("-").map((p) => p[0].toUpperCase() + p.slice(1)).join("")
-          ] ?? Icons.Award;
+          const Icon = iconNamed(b.icon, Award);
           return (
             <View
               key={b.key}

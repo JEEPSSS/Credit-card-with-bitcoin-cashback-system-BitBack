@@ -2,29 +2,27 @@ import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import * as Icons from "lucide-react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import { miscAPI, newIdempotencyKey, rewardsAPI, transactionAPI } from "@/lib/api";
 import { pct, sats, titleCase, usd } from "@/lib/format";
 import {
-  CATEGORY_ICON, COLORS, MIN_CONTROL_HEIGHT, font, fontSize, iconSize, radius, space,
+  CATEGORY_ICON, COLORS, CONTROL_HIT_SLOP, MIN_CONTROL_HEIGHT, font, fontSize, iconSize, radius,
+  space,
 } from "@/lib/theme";
 import type { Category, RewardBreakdown, TransactionResult } from "@/lib/types";
 import { useAction, useApi } from "@/lib/useApi";
+import { iconNamed } from "@/components/icons";
 import { Odometer } from "@/components/Odometer";
 import { Field } from "@/components/Field";
-import { Async, Button, Card, ErrorNote, Header, Label, Num, Screen } from "@/components/ui";
+import { Async, Button, Card, ErrorNote, Header, InlineError, Label, Num, Screen } from "@/components/ui";
 
 const PRESETS = [5, 15, 25, 50, 100];
 const PREVIEW_DEBOUNCE_MS = 300;
 const AMOUNT_FIELD_HEIGHT = 64;
 
-function iconFor(category: string) {
-  const key = (CATEGORY_ICON as Record<string, string>)[category] ?? "credit-card";
-  const pascal = key.split("-").map((p) => p[0].toUpperCase() + p.slice(1)).join("");
-  return (Icons as unknown as Record<string, Icons.LucideIcon>)[pascal] ?? Icons.CreditCard;
-}
+const iconFor = (category: string) =>
+  iconNamed((CATEGORY_ICON as Record<string, string>)[category]);
 
 export default function Simulate() {
   const [amount, setAmount] = useState("25");
@@ -47,6 +45,8 @@ export default function Simulate() {
 
   const value = parseFloat(amount);
   const valid = value > 0;
+  // Said in words, rather than leaving a greyed-out button to explain itself.
+  const amountProblem = amount.trim() && !valid ? "Enter an amount above $0." : null;
 
   // Debounced so typing an amount doesn't fire a request per keystroke.
   useEffect(() => {
@@ -105,6 +105,8 @@ export default function Simulate() {
         />
       </View>
 
+      <InlineError message={amountProblem} style={{ marginTop: 0, marginBottom: space.md }} />
+
       <View style={styles.presets}>
         {PRESETS.map((p) => {
           const active = amount === String(p);
@@ -113,7 +115,9 @@ export default function Simulate() {
               key={p}
               onPress={() => setAmount(String(p))}
               accessibilityRole="button"
+              accessibilityLabel={`$${p}`}
               accessibilityState={{ selected: active }}
+              hitSlop={CONTROL_HIT_SLOP}
               style={[
                 styles.preset,
                 {
@@ -133,7 +137,7 @@ export default function Simulate() {
       <Label>Category</Label>
       <Async state={categories}>
         {(list: Category[]) => (
-          <View style={styles.categories}>
+          <View style={styles.categories} accessibilityRole="radiogroup" accessibilityLabel="Category">
             {list.map((c) => {
               const active = c.category === category;
               const Icon = iconFor(c.category);
@@ -142,7 +146,8 @@ export default function Simulate() {
                   key={c.category}
                   onPress={() => setCategory(c.category)}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
+                  accessibilityState={{ checked: active }}
+                  hitSlop={CONTROL_HIT_SLOP}
                   style={[
                     styles.category,
                     {
@@ -307,7 +312,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.outline,
     borderRadius: radius.control,
     paddingHorizontal: space.md + 2,
     minHeight: AMOUNT_FIELD_HEIGHT,

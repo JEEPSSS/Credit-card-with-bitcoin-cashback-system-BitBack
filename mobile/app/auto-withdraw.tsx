@@ -4,7 +4,7 @@ import { configAPI } from "@/lib/api";
 import { sats } from "@/lib/format";
 import type { AutoWithdrawConfig } from "@/lib/types";
 import { useAction, useApi } from "@/lib/useApi";
-import { Button, Card, COLORS, ErrorNote, Header, Loading, Screen } from "@/components/ui";
+import { Button, Card, COLORS, ErrorNote, Header, InlineError, Loading, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
 import { font, fontSize } from "@/lib/theme";
 
@@ -71,8 +71,12 @@ export default function AutoWithdraw() {
         hint="This build records the address; it does not broadcast a transaction."
       />
       <Button label="Save" onPress={() => void save.run(cfg)} loading={save.busy} />
-      {error ? <Text style={{ color: COLORS.danger, fontSize: fontSize.caption, marginTop: 12 }}>{error}</Text> : null}
-      {saved ? <Text style={{ color: COLORS.success, fontSize: fontSize.caption, marginTop: 12 }}>Saved</Text> : null}
+      <InlineError message={error} />
+      {saved ? (
+        <Text accessibilityLiveRegion="polite" style={{ color: COLORS.success, fontSize: fontSize.caption, marginTop: 12 }}>
+          Saved
+        </Text>
+      ) : null}
     </Screen>
   );
 }

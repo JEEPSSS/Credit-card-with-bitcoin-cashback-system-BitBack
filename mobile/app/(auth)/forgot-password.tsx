@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Text } from "react-native";
 import { router } from "expo-router";
-import { authAPI } from "@/lib/api";
-import { Button, Card, COLORS, Header, Screen } from "@/components/ui";
+import { authAPI, messageFor } from "@/lib/api";
+import { Button, Card, COLORS, Header, InlineError, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
 import { fontSize } from "@/lib/theme";
 
@@ -11,13 +11,18 @@ export default function ForgotPassword() {
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
 
   async function submit() {
     setBusy(true);
+    setError("");
     try {
       const r = await authAPI.forgotPassword(email.trim().toLowerCase());
       setSent(true);
       setToken(r.reset_token ?? null);
+    } catch (e) {
+      // Without this a failed request did nothing at all: no message, no change.
+      setError(messageFor(e));
     } finally {
       setBusy(false);
     }
@@ -28,8 +33,18 @@ export default function ForgotPassword() {
       <Header back title="Reset your password" subtitle="Enter the email on your account." />
       {!sent ? (
         <>
-          <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="name@email.com" />
+          <Field
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+            placeholder="name@email.com"
+          />
           <Button label="Send reset link" onPress={submit} loading={busy} disabled={!email} />
+          <InlineError message={error} />
         </>
       ) : (
         <Card>

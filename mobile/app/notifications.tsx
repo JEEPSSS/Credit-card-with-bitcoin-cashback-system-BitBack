@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 import { View, Text } from "react-native";
-import * as Icons from "lucide-react-native";
+import { Bell, iconNamed } from "@/components/icons";
 import { miscAPI } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { useAction, useApi } from "@/lib/useApi";
-import { Button, COLORS, Empty, ErrorNote, Header, Loading, Screen } from "@/components/ui";
+import { Button, COLORS, Empty, ErrorNote, Header, InlineError, Loading, Screen } from "@/components/ui";
 import { font, fontSize, iconSize } from "@/lib/theme";
 
 export default function Notifications() {
@@ -38,14 +38,13 @@ export default function Notifications() {
           onPress={() => void markRead.run()}
         />
       )}
+      <InlineError message={markRead.error} style={{ marginTop: 0, marginBottom: 12 }} />
       {d.items.length === 0 ? (
         <Empty title="Nothing yet" body="Rewards, badges, and price alerts land here." />
       ) : (
         <View>
           {d.items.map((n, i) => {
-            const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[
-              n.icon.split("-").map((p) => p[0].toUpperCase() + p.slice(1)).join("")
-            ] ?? Icons.Bell;
+            const Icon = iconNamed(n.icon, Bell);
             return (
               <View
                 key={n.id}

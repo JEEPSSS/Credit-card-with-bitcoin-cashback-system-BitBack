@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { messageFor, authAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Button, Card, COLORS, Header, Screen } from "@/components/ui";
+import { Button, ErrorNote, Header, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
-import { fontSize } from "@/lib/theme";
 
 export default function Register() {
   const { signIn } = useAuth();
@@ -36,15 +35,33 @@ export default function Register() {
   return (
     <Screen>
       <Header back title="Create your account" subtitle="Your card starts earning from the first swipe." />
-      <Field label="Name" value={form.display_name} onChangeText={set("display_name")} placeholder="Alex Tan" />
-      <Field label="Email" value={form.email} onChangeText={set("email")} keyboardType="email-address" autoCapitalize="none" placeholder="name@email.com" />
+      <Field
+        label="Name"
+        value={form.display_name}
+        onChangeText={set("display_name")}
+        autoComplete="name"
+        textContentType="name"
+        placeholder="Alex Tan"
+      />
+      <Field
+        label="Email"
+        value={form.email}
+        onChangeText={set("email")}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        placeholder="name@email.com"
+      />
       <Field
         label="Password"
         value={form.password}
         onChangeText={set("password")}
         secureTextEntry
+        autoComplete="new-password"
+        textContentType="newPassword"
         placeholder="At least 8 characters"
-        hint={tooShort ? "Use at least 8 characters." : undefined}
+        error={tooShort ? "Use at least 8 characters." : undefined}
       />
       <Field label="Referral code" value={form.referral_code} onChangeText={set("referral_code")} autoCapitalize="characters" placeholder="Optional" hint="A valid code adds 2,500 sats to your balance." mono />
       <Button
@@ -55,9 +72,9 @@ export default function Register() {
         style={{ marginTop: 8 }}
       />
       {error ? (
-        <Card style={{ marginTop: 20, borderColor: COLORS.dangerBorder }}>
-          <Text style={{ color: COLORS.text, fontSize: fontSize.caption, lineHeight: 20 }}>{error}</Text>
-        </Card>
+        <View style={{ marginTop: 20 }}>
+          <ErrorNote message={error} />
+        </View>
       ) : null}
     </Screen>
   );

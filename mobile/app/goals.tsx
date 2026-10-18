@@ -1,10 +1,10 @@
 import { ReactNode, useCallback, useState } from "react";
-import { View, Text, Modal } from "react-native";
+import { Alert, View, Text, Modal } from "react-native";
 import { goalsAPI, walletAPI } from "@/lib/api";
 import { sats } from "@/lib/format";
 import type { Goal } from "@/lib/types";
 import { useAction, useApi } from "@/lib/useApi";
-import { Button, Card, COLORS, Empty, ErrorNote, Header, Loading, Num, Screen } from "@/components/ui";
+import { Button, Card, COLORS, Empty, ErrorNote, Header, InlineError, Loading, Num, Screen } from "@/components/ui";
 import { Field } from "@/components/Field";
 import { font, fontSize } from "@/lib/theme";
 
@@ -14,6 +14,7 @@ export default function Goals() {
   const [target, setTarget] = useState("");
   const [allocating, setAllocating] = useState<Goal | null>(null);
   const [amount, setAmount] = useState("");
+  const [removing, setRemoving] = useState<number | null>(null);
 
   const state = useApi(
     useCallback(async () => {
@@ -43,6 +44,27 @@ export default function Goals() {
     await load();
   });
 
+  /** Deleting used to happen on the first tap, with no way back. */
+  function confirmRemove(g: Goal) {
+    Alert.alert(
+      `Delete "${g.name}"?`,
+      g.current_sats > 0
+        ? `The ${sats(g.current_sats)} sats in it go back to your wallet.`
+        : "It has no sats in it yet.",
+      [
+        { text: "Keep", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            setRemoving(g.id);
+            void removeGoal.run(g.id);
+          },
+        },
+      ],
+    );
+  }
+
   if (state.error && !state.data) {
     return (
       <Screen>
@@ -59,6 +81,7 @@ export default function Goals() {
     <Screen onRefresh={state.refresh} refreshing={state.refreshing}>
       <Header back title="Savings goals" subtitle={`${sats(d.wallet.balance_sats)} sats available to allocate.`} />
       <Button label="New goal" onPress={() => setCreating(true)} style={{ marginBottom: 20 }} />
+      <InlineError message={removeGoal.error} style={{ marginTop: 0, marginBottom: 12 }} />
 
       {d.goals.length === 0 ? (
         <Empty title="No goals yet" body="Set a target and move sats towards it as you earn." />
@@ -83,8 +106,8 @@ export default function Goals() {
                 <Button
                   label="Delete"
                   variant="ghost"
-                  loading={removeGoal.busy}
-                  onPress={() => void removeGoal.run(g.id)}
+                  loading={removeGoal.busy && removing === g.id}
+                  onPress={() => confirmRemove(g)}
                   style={{ flex: 1 }}
                 />
               </View>
@@ -96,11 +119,7 @@ export default function Goals() {
       <Sheet visible={creating} onClose={() => setCreating(false)} title="New goal">
         <Field label="Name" value={name} onChangeText={setName} placeholder="Hardware wallet" />
         <Field label="Target in sats" value={target} onChangeText={setTarget} keyboardType="number-pad" mono placeholder="250000" />
-        {createGoal.error ? (
-          <Text style={{ color: COLORS.danger, fontSize: fontSize.caption, marginBottom: 12 }}>
-            {createGoal.error}
-          </Text>
-        ) : null}
+        <InlineError message={createGoal.error} style={{ marginTop: 0, marginBottom: 12 }} />
         <Button
           label="Create goal"
           disabled={!name || !Number(target)}
@@ -119,11 +138,7 @@ export default function Goals() {
           placeholder="10000"
           hint={`${sats(d.wallet.balance_sats)} available`}
         />
-        {allocate.error ? (
-          <Text style={{ color: COLORS.danger, fontSize: fontSize.caption, marginBottom: 12 }}>
-            {allocate.error}
-          </Text>
-        ) : null}
+        <InlineError message={allocate.error} style={{ marginTop: 0, marginBottom: 12 }} />
         <Button
           label="Allocate"
           disabled={!Number(amount)}

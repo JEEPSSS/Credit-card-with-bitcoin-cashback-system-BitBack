@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import * as Icons from "lucide-react-native";
+import { ShieldAlert, iconNamed } from "@/components/icons";
 
 import { sats, titleCase } from "@/lib/format";
 import { timeOfDay } from "@/lib/statement";
@@ -29,11 +29,8 @@ import {
 const PUCK_SIZE = 36;
 const PUCK_TINT_OPACITY = "22";   // 13% over the row, in 8-digit hex
 
-function iconFor(category: string) {
-  const key = (CATEGORY_ICON as Record<string, string>)[category] ?? "credit-card";
-  const pascal = key.split("-").map((p) => p[0].toUpperCase() + p.slice(1)).join("");
-  return (Icons as unknown as Record<string, Icons.LucideIcon>)[pascal] ?? Icons.CreditCard;
-}
+const iconFor = (category: string) =>
+  iconNamed((CATEGORY_ICON as Record<string, string>)[category]);
 
 export const ReceiptRow = memo(function ReceiptRow({
   merchant, category, amountFiat, satsEarned, createdAt, riskScore, onPress, last,
@@ -67,7 +64,7 @@ export const ReceiptRow = memo(function ReceiptRow({
           <Text numberOfLines={1} style={styles.merchant}>
             {merchant}
           </Text>
-          {flagged && <Icons.ShieldAlert size={iconSize.xs} color={COLORS.danger} />}
+          {flagged && <ShieldAlert size={iconSize.xs} color={COLORS.danger} />}
         </View>
         <Text style={styles.meta}>
           {titleCase(category)} · {timeOfDay(createdAt)}

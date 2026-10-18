@@ -4,7 +4,7 @@ import { Area, CartesianChart, Line } from "victory-native";
 
 import { miscAPI, walletAPI } from "@/lib/api";
 import { relativeTime, sats, titleCase, usd } from "@/lib/format";
-import { COLORS, MIN_CONTROL_HEIGHT, font, fontSize, radius, space } from "@/lib/theme";
+import { COLORS, CONTROL_HIT_SLOP, MIN_CONTROL_HEIGHT, font, fontSize, radius, space } from "@/lib/theme";
 import { useApi } from "@/lib/useApi";
 import { ChartSkeleton } from "@/components/Skeleton";
 import { Odometer } from "@/components/Odometer";
@@ -59,6 +59,7 @@ export default function WalletScreen() {
                       onPress={() => setPeriod(p)}
                       accessibilityRole="tab"
                       accessibilityState={{ selected: active }}
+                      hitSlop={CONTROL_HIT_SLOP}
                       style={[
                         styles.period,
                         {
