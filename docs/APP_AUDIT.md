@@ -386,16 +386,17 @@ Primary sources, as recommended for citation:
 Everything here can be taken back, in whole or in part, without losing history.
 Each undo is a new commit, so an undo can itself be undone.
 
-**Restore point.** The tag `before-app-audit` marks `main` as it was before any of
-this (commit `2eed728`). `git diff before-app-audit main` shows everything that
-changed since.
+**Restore point.** Commit `2eed728` is `main` as it was before any of this, and
+stays in the history whatever happens next. `git diff 2eed728 main` shows
+everything that changed since. To give it a name, tag it from your own machine:
+`git tag before-app-audit 2eed728 && git push origin before-app-audit`.
 
 **In the code** (after the pull request is merged with a merge commit):
 
 | To undo | Run on `main`, then `git push` |
 |---------|--------------------------------|
 | Only the wake banner change (A10) | `git revert e8db53a` |
-| One fix | `git revert <its commit>`; `git log --oneline before-app-audit..main` lists them |
+| One fix | `git revert <its commit>`; `git log --oneline 2eed728..main` lists them |
 | The whole audit at once | `git revert -m 1 <merge commit>`; `git log --merges -1` shows it |
 
 Nothing on the server changed, so none of these needs a Render deploy.
