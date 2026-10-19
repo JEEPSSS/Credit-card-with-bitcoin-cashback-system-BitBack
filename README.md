@@ -1,8 +1,9 @@
 # BitBack — bitcoin cashback card
 
-A card that pays cashback in satoshis instead of points, with the reward engine,
-gamification, and five analytical models running on the user's own transaction
-history. FastAPI backend, Expo (React Native) mobile app.
+A card that pays cashback in satoshis instead of points, with two machine-learning
+models (fraud detection, earnings forecast) and four rule engines (boost
+recommender, spending persona, reward engine, gamification) running on the
+user's own transaction history. FastAPI backend, Expo (React Native) mobile app.
 
 ## Try it
 
@@ -70,19 +71,19 @@ app/
   reward_engine.py      cashback maths, levels, round-up      (pure, testable)
   gamification.py       streaks and the ten badges
   anomaly_detector.py   Isolation Forest fraud scoring
-  ml_forecast.py        damped Holt's + linear regression ensemble
-  smart_recommender.py  weighted ranking for boost suggestions
+  ml_forecast.py        weekly level smoothing + window mean, 80% interval
+  smart_recommender.py  boost suggestions ranked by expected value
   spending_persona.py   nearest-centroid cosine classification
   services.py           wallet, referral and alert operations
   rate_limit.py         fixed-window limiter
   auth.py               JWT (PyJWT), bcrypt, TOTP helpers
-  routers/              47 routes, one module per resource group
+  routers/              13 modules, one per resource group (51 API operations in all)
   models.py schemas.py database.py btc_service.py
 main.py                 app assembly: config, middleware, lifespan, routers
 migrations/             Alembic; `alembic upgrade head`
 seed_demo.py            demo data generator
 tests/                  pytest
-mobile/                 Expo app (21 screens)
+mobile/                 Expo app (23 screens)
 ```
 
 ## The models and rule engines
@@ -111,13 +112,15 @@ written into the module docstrings:
   backfilled data the history query included transactions *after* the one being
   scored, so "time since last transaction" was zero for every query point and
   positive for every training row. With both fixed, the flag rate matches the
-  `contamination=0.05` hyperparameter and the threshold of 60 is anchored to it
-  rather than picked by hand.
+  `contamination=0.05` hyperparameter, and the score scale is anchored to it
+  (60 at the model's own outlier boundary) rather than picked by hand. The alert
+  line was later moved to 56 on validation data (docs/EVALUATION.md).
 - **The forecast predicted 10x the observed rate.** Daily sats earned is
   zero-inflated, which destabilises exponential smoothing, and undamped Holt's
-  extrapolates the last trend forever. Weekly aggregation plus trend damping
-  fixed both; the model is verified against flat, growing, and collapsing
-  synthetic series in `tests/test_models_ml.py`.
+  extrapolates the last trend forever. Weekly aggregation fixed the first. The
+  trend term was later removed altogether, because backtests showed it losing to
+  "same as last month" (docs/EVALUATION.md); the model is verified against flat,
+  growing, and collapsing synthetic series in `tests/test_models_ml.py`.
 - **Every new account was told its earnings were growing.** The lookback window
   is thirteen weeks, so a user active for three of them had ten empty weeks
   prepended to their series — weeks before the account existed, counted as weeks
@@ -131,17 +134,17 @@ written into the module docstrings:
 - **Deleting a user left orphaned rows.** SQLAlchemy's bulk `query().delete()`
   bypasses ORM cascade rules. Object-level `db.delete()` is required.
 
-**Fraud scoring latency.** Training used to run inside every request: 117 ms at
-100 transactions of history, 158 ms at the 500-row cap, of which a flat ~110 ms
-was the fit itself. A fitted model is now cached per user and refit only after
-`FRAUD_REFIT_INTERVAL` new transactions, so the request path is one
-`decision_function` call.
+**Fraud scoring latency.** Training used to run inside every request, with a
+flat ~110 ms for the fit itself. A fitted model is now cached per user and refit
+only after `FRAUD_REFIT_INTERVAL` (25) new transactions, so the request path is
+usually one `decision_function` call. From `python -m evaluation.run`; absolute
+times vary with the machine:
 
-| | Before | After |
-|---|---|---|
-| Cold (refit) | 126 ms | 131 ms, once per 25 transactions |
-| Warm (cached) | — | 4.6 ms |
-| Amortised | 126 ms | 9.7 ms |
+| History | Cold (refit) | Warm (cached, median) | Amortised over 25 |
+|---|---|---|---|
+| 135 transactions | 132 ms | 5.5 ms | 10.6 ms |
+| 340 transactions | 239 ms | 10.7 ms | 19.8 ms |
+| 687 transactions | 413 ms | 18.6 ms | 34.3 ms |
 
 ## Design
 
@@ -164,12 +167,13 @@ right-aligned tabular-mono column, so figures align vertically down the screen.
 
 ## Scope note
 
-The brief this was built from specified five models and twenty screens. All are
-implemented, but for a dissertation the fraud detector and the forecast are the
-two worth writing up in depth — they have real feature engineering and a
-falsifiable evaluation. The recommender and persona classifier are deterministic
-scoring functions rather than learned models, and describing them as machine
-learning in a viva would be hard to defend.
+The brief this was built from specified five models. The code has two learned
+models (the fraud detector and the forecast) and four rule engines (the boost
+recommender, the persona classifier, the reward engine and gamification); the
+recommender and persona are deterministic scoring functions, not machine
+learning, and the app says "four models" for the four it explains on the AI
+insights screen. All six are evaluated, the rule engines included, in
+[docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## What is not built
 
@@ -178,7 +182,9 @@ learning in a viva would be hard to defend.
 - No email delivery. `DEMO_MODE` returns the password-reset token in the API
   response so the flow is demonstrable without a mail server; with it off the
   endpoint reveals nothing about whether an address is registered.
-- No held-out evaluation of either model. The fraud detector has no labelled
-  test set and the forecast is not backtested, so there are no precision,
-  recall, or error figures to report yet.
-- No deployment. Both halves run locally.
+- No evaluation on real data. Every result in docs/EVALUATION.md is measured
+  against synthetic cardholders whose correct answers are known by
+  construction, with separate validation and held-out seeds; real cardholders
+  and real fraud will differ.
+- No iOS build. The iOS configuration exists, but only the Android APK has been
+  built, released and tested.
