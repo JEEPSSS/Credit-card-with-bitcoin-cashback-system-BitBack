@@ -186,5 +186,7 @@ insights screen. All six are evaluated, the rule engines included, in
   against synthetic cardholders whose correct answers are known by
   construction, with separate validation and held-out seeds; real cardholders
   and real fraud will differ.
-- No iOS build. The iOS configuration exists, but only the Android APK has been
-  built, released and tested.
+- No iOS release yet. An iOS build has been submitted to App Review for
+  TestFlight under a shared Apple Developer account and is awaiting review;
+  earlier submissions were rejected. Only the Android APK has been released and
+  tested.
