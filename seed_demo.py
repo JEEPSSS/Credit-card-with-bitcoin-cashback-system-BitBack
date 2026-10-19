@@ -9,7 +9,7 @@ something to show.
     login: demo@bitback.app / demo12345
 """
 import random
-from datetime import timedelta
+from datetime import UTC, timedelta, timezone
 
 from app.anomaly_detector import invalidate as invalidate_fraud_cache
 from app.anomaly_detector import score_transaction
@@ -61,6 +61,20 @@ RANGES = {"dining": (8, 45), "groceries": (25, 120), "transport": (3, 30),
           "shopping": (20, 180), "entertainment": (10, 40), "bills": (40, 200),
           "health": (12, 90), "travel": (150, 800), "education": (20, 150),
           "general": (5, 60)}
+
+# The demo cardholder lives in Singapore, so their day is written in Singapore
+# time and stored, like every timestamp here, as naive UTC (app/clock.py). The
+# hours used to go into the UTC column as they were: once the app showed times
+# correctly the history ran from 4 PM to 7 AM, and an ordinary afternoon purchase
+# looked like an unusual hour to the fraud model, which reads the stored hour.
+DEMO_TZ = timezone(timedelta(hours=8), "SGT")   # no daylight saving in Singapore
+
+
+def _at(day, hour: int, minute: int):
+    """`hour:minute` in Singapore on `day`'s Singapore date, as naive UTC."""
+    local = day.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return local.astimezone(UTC).replace(tzinfo=None)
+
 
 # Large amount, unusual hour, unseen merchant - one of each signal the model uses.
 PLANTED_ANOMALIES = [
@@ -127,8 +141,9 @@ def main():
         weights = [WEIGHTS[c] for c in cats]
         total_sats = 0
 
+        today = now.replace(tzinfo=UTC).astimezone(DEMO_TZ)
         for day_offset in range(HISTORY_DAYS, 0, -1):
-            when = now - timedelta(days=day_offset)
+            when = today - timedelta(days=day_offset)
             # Gentle upward trend so the forecast has signal to find.
             n = random.choices([0, 1, 2, 3], weights=[18, 40, 30, 12])[0]
             if day_offset < 40:
@@ -142,14 +157,14 @@ def main():
                 total_sats += _record(
                     db, user.id, round(random.uniform(lo, hi), 2), cat,
                     random.choice(MERCHANTS[cat]), price, rates[cat],
-                    when.replace(hour=random.randint(8, 22), minute=random.randint(0, 59)),
+                    _at(when, random.randint(8, 22), random.randint(0, 59)),
                     total_sats,
                 )
 
         for amount, cat, merchant, hour, days_back in PLANTED_ANOMALIES:
             total_sats += _record(
                 db, user.id, amount, cat, merchant, 67000.0, rates[cat],
-                (now - timedelta(days=days_back)).replace(hour=hour, minute=17),
+                _at(today - timedelta(days=days_back), hour, 17),
                 total_sats,
             )
 
