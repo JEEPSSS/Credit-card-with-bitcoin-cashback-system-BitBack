@@ -87,10 +87,10 @@ app complies with MASVS.
 | A11 | Accessibility | WCAG 1.4.4 | Found on a device at 130% and 200% text: the payment card's lettering, amount presets, stat tiles and reward figures clipped | 2 | Fixed in `467d1b7` (card text capped at 1.2×, rows wrap); verified at 130% in round 3, where 200% still showed A12 |
 | A12 | Accessibility | WCAG 1.4.4 | Round 3 at 200%: three tab labels cut short; Boosts' "Extra per month" ran off its card. Changing the text size while the app ran left Home clipped until a restart | 2 | 200% on a fresh launch: fixed in `a5e3b87` and verified in round 4. Changing the size while the app runs: still failing; see A13 |
 | A13 | Accessibility | WCAG 1.4.4; Android State_Preservation | Changing the system text size while the app is open restarts it on Home, loses anything typed (42.75 reset to 25), and leaves text clipped until a full restart, in both directions. Cause: Android recreates the screen because MainActivity does not declare `fontScale` among the changes it handles (checked by generating the Android project) | 2 | **Partly fixed, released** in preview 2 (`v1.0.0-preview.2`, round 5): no restart, typed input kept, and going back to a smaller size recovers. Still open: growing the text while the app runs clips until the app is reopened. Likely cause: React Native measures text with the display metrics read at start-up, so larger text is drawn in boxes measured at the old size. Workaround: reopen the app after making text larger |
-| A14 | Accessibility | WCAG 1.4.4; Nielsen #8 | Found in the demo recording at 200% text: words split mid-line ("New tran / saction", "Platinu / m", "Fraud pro / tection", "Produ / ct res / earch"). Nothing was cut off, but the words were hard to read | 2 | Home fixed in `213356d`, verified in round 7. Round 7 found more: More still split words, and so did Boosts, Fraud protection and Profile; AI insights' category chips ran off the screen. Fixed in `52a1b13`; needs a device check |
+| A14 | Accessibility | WCAG 1.4.4; Nielsen #8 | Found in the demo recording at 200% text: words split mid-line ("New tran / saction", "Platinu / m", "Fraud pro / tection", "Produ / ct res / earch"). Nothing was cut off, but the words were hard to read | 2 | Home fixed in `213356d`, verified in round 7. Round 7 found more: More still split words, and so did Boosts, Fraud protection and Profile; AI insights' category chips ran off the screen. Fixed in `52a1b13`; verified in round 8: no split words on Home, More, Boosts, Fraud protection, Profile or AI insights at 200%, and no change at 100% |
 | U1 | Usability | Nielsen #1 | "Copy key" gave no sign it had copied | 1 | Fixed |
 | U2 | Usability | Nielsen #9 | Invalid amount left a greyed-out button with no reason | 1 | Fixed |
-| U3 | Usability | Nielsen #2 | Found in the demo recording: every time was shown eight hours early in Singapore. A purchase made a moment before read "8h ago" and was listed at 6:50 AM, not 2:50 PM. Cause: the API sends UTC without an offset and the app read it as local time. The demo history had the matching fault: Singapore hours stored as UTC, so an ordinary afternoon purchase looked like an unusual hour to the fraud model and was flagged (70/100) | 2 | App fixed in `bddc9d2`, verified on the device in round 7 (a 4:37 PM purchase shows at 4:37 PM, "1m ago"). Seeder fixed in `512d1fb`; **the live demo account is not re-seeded yet**, so its old history still shows overnight times (groceries at 2:52 AM) |
+| U3 | Usability | Nielsen #2 | Found in the demo recording: every time was shown eight hours early in Singapore. A purchase made a moment before read "8h ago" and was listed at 6:50 AM, not 2:50 PM. Cause: the API sends UTC without an offset and the app read it as local time. The demo history had the matching fault: Singapore hours stored as UTC, so an ordinary afternoon purchase looked like an unusual hour to the fraud model and was flagged (70/100) | 2 | App fixed in `bddc9d2`, verified on the device in round 7 (a 4:37 PM purchase shows at 4:37 PM, "1m ago"). Seeder fixed in `512d1fb`; the live demo account was re-seeded in round 8, and its history now shows daytime purchases and the planted fraud at 2–4 AM |
 | R1 | Release | EAS Update debugging | No way to see on a phone which update it runs | 2 | Fixed: build info on More |
 | A10 | Accessibility | WCAG 2.4.11; Nielsen #3 | While the server wakes (up to a minute) the banner covers the top of every screen and takes taps on most of the back button and the notification bell | 2 | Fixed: the banner sits in the page and pushes content down |
 | C3 | Security | MASVS-CODE-3 | `npm audit`: 43 advisories (25 high, 18 moderate) | 2 | Not fixed: needs an Expo SDK major upgrade |
@@ -516,6 +516,30 @@ and keeps every word whole from 100% to 200%. Long merchant names in History
 are still shortened with an ellipsis at 200%; letting them wrap would split a
 long single word such as "ComfortDelGro" instead, so they are left as they are.
 
+### Round 8 (19 October 2026, update `01a15391`)
+
+PR #10 published as update group `84116abf` (rollback: `3c0c5a89`). Emulator in
+Singapore time.
+
+**Demo account re-seeded.** `seed_demo.py` was run once against production,
+with the user's explicit approval limited to recreating demo@bitback.app and
+its history. The database address was copied from Render into a temporary,
+git-ignored `.env` without being displayed, and the file was deleted and the
+clipboard cleared straight after. Output: 183 transactions, 808,285 sats,
+8 flagged, matching the test run of the same seeder.
+
+| Check | Result |
+|-------|--------|
+| Planted purchases (U3) | Pass: LuxeWatch Geneva 3:17 AM, Unknown Terminal 4471 2:17 AM, Sky Charter Ltd 4:17 AM |
+| Everyday purchases (U3) | Pass: 38 sampled rows between 8:08 AM and 10:45 PM. The seeder draws hours 8 to 22 with any minute, so times up to 10:59 PM are expected |
+| New purchase (U3) | Pass: made at 6:31 PM, shown at 6:31 PM under Today and "just now" in Wallet; not flagged |
+| 200% text (A14) | Pass on Home, More, Boosts, Fraud protection, Profile and AI insights: no split words, no chips cut off. On More, "Four models" stays beside "AI insights" because both fit on one line; a note moves down only when it would squeeze its label |
+| 100% text | Pass: the same six screens unchanged, apart from Profile badge names that now take two lines instead of ending in "…" |
+| Offline notice | Pass: notice and Try again shown; it clears once the connection is back |
+
+The demo video was re-recorded with these clips: purchases, fraud reasons,
+goals and wallet, 200% text and the offline notice now show the fixed app.
+
 ## Tests added
 
 - `mobile/lib/format.test.ts`: plain-language fraud features, scorer names,
@@ -600,8 +624,9 @@ that changed since.
 
 Nothing on the server changed, so none of these needs a Render deploy.
 Re-seeding the demo account is a change to data, not code, and a revert does
-not undo it: to go back, check out `seed_demo.py` from before `512d1fb` and run
-it again.
+not undo it. The account was re-seeded in round 8; to go back to the old
+history, check out `seed_demo.py` from before `512d1fb` and run it again. Either
+way the account is recreated, so anyone signed in to it is signed out.
 
 **On phones.** The app changes reach phones as an over-the-air update, and an
 update can be replaced by an older one:
