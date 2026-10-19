@@ -286,34 +286,54 @@ export function scaledLineHeight(size: number, fontScale: number, max = MAX_DISP
 }
 
 /**
- * flexBasis for an item in a wrapping row: the room its longest word needs at
- * the current text size, plus padding, which does not grow with text.
+ * The room a text's longest word needs at the current text size, plus padding,
+ * which does not grow with text.
  *
  * Android splits a word that is wider than its line, so at 200% text "New
- * transaction" became "New tran / saction" and "Platinum" "Platinu / m". With
- * this basis, items sit side by side while every word fits and move to a line
- * of their own once one would not.
+ * transaction" became "New tran / saction" and "Platinum" "Platinu / m". Items
+ * in a wrapping row given this room sit side by side while every word fits and
+ * move to a line of their own once one would not.
+ *
+ * Give it as `flexBasis` when the row has a fixed width, as Home's rows do.
+ * Inside a `flex: 1` box give it as `minWidth` with `flexBasis: 0` instead:
+ * there Yoga sizes a `flexBasis` from the text's natural width, so More's
+ * labels were still squeezed until "Fraud protection" split (round 7).
  */
 export function wordFitBasis(wordWidth: number, fontScale: number, padding = 0): number {
   return Math.ceil(wordWidth * Math.max(fontScale, 1)) + padding;
 }
 
 /**
- * A generous estimate of a text's longest word at 100% text size: 0.62em a
- * letter, where Inter averages about 0.5em and its widest common letters about
- * 0.6em. React Native cannot measure text before laying it out. Generous means
- * a row wraps a little early, never late.
+ * Advance widths of Inter Medium, the widest face the app sets, in em. Plain
+ * text falls back to Roboto, which is narrower, so these err wide for it too.
  */
-export function longestWordWidth(text: string, size: number): number {
-  return Math.ceil(Math.max(0, ...text.split(/\s+/).map((w) => w.length)) * size * 0.62);
-}
+const GLYPH_EM: Record<string, number> = {
+  a: 0.568, b: 0.618, c: 0.577, d: 0.618, e: 0.587, f: 0.379, g: 0.62, h: 0.602, i: 0.252, j: 0.252,
+  k: 0.559, l: 0.252, m: 0.888, n: 0.602, o: 0.604, p: 0.618, q: 0.618, r: 0.387, s: 0.539, t: 0.34,
+  u: 0.602, v: 0.575, w: 0.829, x: 0.557, y: 0.575, z: 0.559,
+  A: 0.709, B: 0.657, C: 0.733, D: 0.722, E: 0.603, F: 0.589, G: 0.748, H: 0.745, I: 0.272, J: 0.575,
+  K: 0.688, L: 0.565, M: 0.913, N: 0.756, O: 0.767, P: 0.642, Q: 0.769, R: 0.648, S: 0.646, T: 0.653,
+  U: 0.74, V: 0.709, W: 1.003, X: 0.701, Y: 0.696, Z: 0.641,
+  0: 0.646, 1: 0.415, 2: 0.616, 3: 0.627, 4: 0.656, 5: 0.618, 6: 0.63, 7: 0.571, 8: 0.629, 9: 0.63,
+  ".": 0.303, ",": 0.303, "-": 0.462, "'": 0.313, "%": 0.993, "$": 0.646, "/": 0.37, ":": 0.303,
+};
+/** For a character not listed: wider than any lowercase letter, so it errs wide. */
+const OTHER_GLYPH_EM = 0.9;
 
 /**
- * "Diamond", the widest level name, measured in Inter Medium at the body size
- * (68 at 100%). Measured rather than estimated: the estimate is wide enough for
- * "Platinum" to push three stat tiles onto two lines on a 360dp phone at 100%.
+ * A text's longest word at 100% text size, from Inter Medium's letter widths
+ * plus 4% for rounding, since React Native cannot measure text before laying
+ * it out. It errs wide, so a row wraps a little early, never late. A flat 0.62em
+ * a letter, used first, was too wide for long words of narrow letters: it would
+ * have put Profile's "Transactions" tile on a line of its own at 100%.
  */
-export const LEVEL_NAME_WIDTH = 70;
+export function longestWordWidth(text: string, size: number): number {
+  const em = (word: string) => [...word].reduce((sum, ch) => sum + (GLYPH_EM[ch] ?? OTHER_GLYPH_EM), 0);
+  return Math.ceil(Math.max(0, ...text.split(/\s+/).map(em)) * size * 1.04);
+}
+
+/** "Diamond", the widest level name, so the stat tiles do not move as you level up. */
+export const LEVEL_NAME_WIDTH = longestWordWidth("Diamond", fontSize.body);
 
 /**
  * Balance and sats figures. Tabular figures stop digits jittering as values

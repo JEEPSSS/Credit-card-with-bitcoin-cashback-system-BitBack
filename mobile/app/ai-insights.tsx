@@ -98,7 +98,8 @@ export default function AIInsights() {
           <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 12 }}>
             Confidence {(d.persona.confidence * 100).toFixed(0)}% · next closest is {d.persona.runner_up}
           </Text>
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+          {/* Wraps: at 200% text the third category ran off the screen. */}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
             {d.persona.top_categories.map((c) => (
               <View key={c.category} style={{ backgroundColor: COLORS.elevated, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
                 <Text style={{ color: COLORS.text, fontSize: fontSize.caption }}>

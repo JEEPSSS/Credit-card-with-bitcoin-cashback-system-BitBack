@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { View, Text } from "react-native";
+import { View, Text, useWindowDimensions } from "react-native";
 import { Award, iconNamed } from "@/components/icons";
 import { aiAPI, analyticsAPI, rewardsAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -8,7 +8,7 @@ import { useApi } from "@/lib/useApi";
 import { refreshError } from "@/lib/screenState";
 import type { Badge, CategorySpend } from "@/lib/types";
 import { Button, Card, COLORS, ErrorNote, Header, Label, Loading, Num, Screen } from "@/components/ui";
-import { font, fontSize, iconSize } from "@/lib/theme";
+import { font, fontSize, iconSize, longestWordWidth, wordFitBasis } from "@/lib/theme";
 
 export default function Profile() {
   const { user, signOut } = useAuth();
@@ -21,6 +21,7 @@ export default function Profile() {
       return { summary, persona, spending };
     }, []),
   );
+  const { fontScale } = useWindowDimensions();
 
   if (state.error && !state.data) {
     return (
@@ -34,6 +35,14 @@ export default function Profile() {
 
   const { summary, persona, spending } = state.data;
   const lvl = summary.level;
+  // At large text sizes the tiles wrap and the badges widen, so no word has to
+  // split ("Transac / tions") and no badge name is cut short.
+  const tileBasis = wordFitBasis(longestWordWidth("Transactions", fontSize.caption), fontScale, 2 * 12 + 2);
+  const badgeWidth = wordFitBasis(
+    Math.max(0, ...summary.badges.all.map((b) => longestWordWidth(b.name, fontSize.caption))),
+    fontScale,
+    2 * 12 + 2,
+  );
 
   return (
     <Screen refreshError={refreshError(state)} onRetry={state.reload}>
@@ -66,10 +75,10 @@ export default function Profile() {
         </Text>
       </Card>
 
-      <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
-        <Tile label="Current streak" value={`${summary.streak.current}`} />
-        <Tile label="Best streak" value={`${summary.streak.longest}`} />
-        <Tile label="Transactions" value={`${summary.transaction_count}`} />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+        <Tile label="Current streak" value={`${summary.streak.current}`} basis={tileBasis} />
+        <Tile label="Best streak" value={`${summary.streak.longest}`} basis={tileBasis} />
+        <Tile label="Transactions" value={`${summary.transaction_count}`} basis={tileBasis} />
       </View>
 
       {persona.has_enough_data && (
@@ -95,13 +104,13 @@ export default function Profile() {
               accessible
               accessibilityLabel={`${b.name}. ${b.description}. ${b.earned ? "Earned" : "Locked"}`}
               style={{
-                width: "31%", alignItems: "center", padding: 12, borderRadius: 12,
+                width: "31%", minWidth: badgeWidth, alignItems: "center", padding: 12, borderRadius: 12,
                 backgroundColor: COLORS.card, borderWidth: 1,
                 borderColor: b.earned ? COLORS.border : "transparent", opacity: b.earned ? 1 : 0.35,
               }}
             >
               <Icon size={iconSize.lg} color={b.earned ? COLORS.primary : COLORS.muted} />
-              <Text numberOfLines={1} style={{ color: COLORS.text, fontSize: fontSize.caption, marginTop: 8, textAlign: "center" }}>{b.name}</Text>
+              <Text style={{ color: COLORS.text, fontSize: fontSize.caption, marginTop: 8, textAlign: "center" }}>{b.name}</Text>
             </View>
           );
         })}
@@ -127,9 +136,9 @@ export default function Profile() {
   );
 }
 
-function Tile({ label, value }: { label: string; value: string }) {
+function Tile({ label, value, basis }: { label: string; value: string; basis: number }) {
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.card, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 12 }}>
+    <View style={{ flexGrow: 1, flexBasis: basis, backgroundColor: COLORS.card, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 12 }}>
       <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>{label}</Text>
       <Num size={fontSize.heading}>{value}</Num>
     </View>
