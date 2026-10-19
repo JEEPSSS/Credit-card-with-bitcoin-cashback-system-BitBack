@@ -52,6 +52,13 @@ describe("relativeTime", () => {
   it("falls back to a date beyond a week", () => {
     expect(relativeTime(ago(30 * 86_400_000))).toMatch(/^[A-Z][a-z]{2} \d+$/);
   });
+
+  it("reads the API's timestamps, which are UTC without an offset", () => {
+    // A purchase made a moment before showed as "8h ago" in Singapore.
+    const fromApi = (ms: number) => ago(ms).replace("Z", "");
+    expect(relativeTime(fromApi(30_000))).toBe("just now");
+    expect(relativeTime(fromApi(5 * 60_000))).toBe("5m ago");
+  });
 });
 
 describe("riskBand", () => {

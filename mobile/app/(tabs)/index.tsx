@@ -1,12 +1,14 @@
 import { useCallback } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { ArrowUpRight, Bell, Flame, Sparkles, TrendingDown, TrendingUp } from "@/components/icons";
 
 import { aiAPI, miscAPI, rewardsAPI, transactionAPI, walletAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { sats, usd } from "@/lib/format";
-import { COLORS, font, fontSize, iconSize, radius, space } from "@/lib/theme";
+import {
+  COLORS, LEVEL_NAME_WIDTH, font, fontSize, iconSize, longestWordWidth, radius, space, wordFitBasis,
+} from "@/lib/theme";
 import type { Transaction } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { refreshError } from "@/lib/screenState";
@@ -38,6 +40,12 @@ export default function Home() {
       };
     }, []),
   );
+
+  // Buttons and stat tiles share a row while their longest words fit, and
+  // wrap at large text sizes instead of breaking a word in two.
+  const { fontScale } = useWindowDimensions();
+  const actionBasis = wordFitBasis(longestWordWidth("New transaction", fontSize.body), fontScale, 2 * space.xl);
+  const statBasis = wordFitBasis(LEVEL_NAME_WIDTH, fontScale, 2 * space.md + 2);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -95,13 +103,13 @@ export default function Home() {
                 <Button
                   label="New transaction"
                   onPress={() => router.push("/(tabs)/simulate")}
-                  style={{ flex: 1 }}
+                  style={{ flexGrow: 1, flexBasis: actionBasis }}
                 />
                 <Button
                   label="Wallet"
                   variant="ghost"
                   onPress={() => router.push("/(tabs)/wallet")}
-                  style={{ flex: 1 }}
+                  style={{ flexGrow: 1, flexBasis: actionBasis }}
                 />
               </View>
 
@@ -111,12 +119,19 @@ export default function Home() {
                   value={`${summary.streak.current}`}
                   unit="days"
                   icon={<Flame size={iconSize.xs} color={COLORS.primary} />}
+                  basis={statBasis}
                 />
-                <Stat label="Level" value={summary.level.name} unit={`${summary.level.multiplier}x`} />
+                <Stat
+                  label="Level"
+                  value={summary.level.name}
+                  unit={`${summary.level.multiplier}x`}
+                  basis={statBasis}
+                />
                 <Stat
                   label="Badges"
                   value={`${summary.badges.earned_count}`}
                   unit={`of ${summary.badges.total_count}`}
+                  basis={statBasis}
                 />
               </View>
 
@@ -202,12 +217,12 @@ export const toRow = (t: Transaction) => ({
 });
 
 function Stat({
-  label, value, unit, icon,
+  label, value, unit, icon, basis,
 }: {
-  label: string; value: string; unit?: string; icon?: React.ReactNode;
+  label: string; value: string; unit?: string; icon?: React.ReactNode; basis: number;
 }) {
   return (
-    <View style={styles.stat}>
+    <View style={[styles.stat, { flexBasis: basis }]}>
       <View style={styles.statHead}>
         {icon}
         <Text style={styles.statLabel}>{label}</Text>
@@ -253,10 +268,10 @@ const styles = StyleSheet.create({
     marginBottom: space.xl,
   },
   priceLabel: { color: COLORS.muted, fontSize: fontSize.caption },
-  actions: { flexDirection: "row", gap: space.sm + 2, marginBottom: space.xl },
-  stats: { flexDirection: "row", gap: space.sm + 2, marginBottom: space.xl },
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: space.sm + 2, marginBottom: space.xl },
+  stats: { flexDirection: "row", flexWrap: "wrap", gap: space.sm + 2, marginBottom: space.xl },
   stat: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: COLORS.card,
     borderRadius: radius.card,
     borderWidth: 1,

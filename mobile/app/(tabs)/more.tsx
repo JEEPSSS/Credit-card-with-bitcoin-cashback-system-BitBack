@@ -1,4 +1,4 @@
-import { View, Text, Pressable, Linking } from "react-native";
+import { View, Text, Pressable, Linking, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import {
   ChevronRight, ClipboardList, Clock, Coins, Gift, Lock, PartyPopper, Send, ShieldCheck, Sparkles,
@@ -7,7 +7,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { BASE_URL } from "@/lib/api";
 import { Button, COLORS, Header, Label, Screen } from "@/components/ui";
-import { MIN_TOUCH_TARGET, fontSize, iconSize } from "@/lib/theme";
+import { MIN_TOUCH_TARGET, fontSize, iconSize, longestWordWidth, space, wordFitBasis } from "@/lib/theme";
 import { BuildInfo } from "@/components/BuildInfo";
 
 const GROUPS = [
@@ -47,6 +47,7 @@ const GROUPS = [
 
 export default function More() {
   const { user, signOut } = useAuth();
+  const { fontScale } = useWindowDimensions();
   return (
     <Screen>
       <Header title="More" subtitle={user?.email} />
@@ -63,13 +64,26 @@ export default function More() {
                   accessibilityRole="button"
                   style={({ pressed }) => ({
                     flexDirection: "row", alignItems: "center", minHeight: 52, paddingHorizontal: 14,
+                    paddingVertical: space.sm,
                     borderBottomWidth: i === g.items.length - 1 ? 0 : 1, borderBottomColor: COLORS.border,
                     opacity: pressed ? 0.6 : 1,
                   })}
                 >
                   <Icon size={iconSize.md} color={COLORS.muted} />
-                  <Text style={{ color: COLORS.text, fontSize: fontSize.body, marginLeft: 12, flex: 1 }}>{item.label}</Text>
-                  {(item as any).note && <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginRight: 8 }}>{(item as any).note}</Text>}
+                  {/* The note moves under the label once both no longer fit on one
+                      line, rather than squeezing it until "Fraud protection" broke
+                      mid-word at 200% text. */}
+                  <View style={{ flex: 1, marginLeft: 12, marginRight: 8, flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 8 }}>
+                    <Text
+                      style={{
+                        color: COLORS.text, fontSize: fontSize.body, flexGrow: 1, flexShrink: 1,
+                        flexBasis: wordFitBasis(longestWordWidth(item.label, fontSize.body), fontScale),
+                      }}
+                    >
+                      {item.label}
+                    </Text>
+                    {(item as any).note && <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>{(item as any).note}</Text>}
+                  </View>
                   <ChevronRight size={iconSize.sm} color={COLORS.muted} />
                 </Pressable>
               );
