@@ -76,8 +76,8 @@ export default function More() {
                   <View style={{ flex: 1, marginLeft: 12, marginRight: 8, flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 8 }}>
                     <Text
                       style={{
-                        color: COLORS.text, fontSize: fontSize.body, flexGrow: 1, flexShrink: 1,
-                        flexBasis: wordFitBasis(longestWordWidth(item.label, fontSize.body), fontScale),
+                        color: COLORS.text, fontSize: fontSize.body, flexGrow: 1, flexShrink: 1, flexBasis: 0,
+                        minWidth: wordFitBasis(longestWordWidth(item.label, fontSize.body), fontScale),
                       }}
                     >
                       {item.label}

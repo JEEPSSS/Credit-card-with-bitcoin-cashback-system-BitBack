@@ -53,7 +53,7 @@ build; in the APK, type it in or create your own account)
 pytest                    # 241 backend tests, each on its own in-memory database
 TEST_DATABASE_URL=postgresql://... pytest   # the same suite on Postgres (+2 race tests)
 ruff check app main.py seed_demo.py tests evaluation scripts
-cd mobile && npm test     # 72 front-end tests
+cd mobile && npm test     # 75 front-end tests
 ```
 
 How the backend was hardened for production, with evidence for each finding:

@@ -6,7 +6,7 @@ import { fraudFeature, relativeTime, riskBand, scoredBy, titleCase, usd } from "
 import { useApi } from "@/lib/useApi";
 import { refreshError } from "@/lib/screenState";
 import { Card, COLORS, Empty, ErrorNote, Header, Label, Loading, Num, Screen } from "@/components/ui";
-import { RISK_FLAG_THRESHOLD, font, fontSize } from "@/lib/theme";
+import { RISK_FLAG_THRESHOLD, font, fontSize, longestWordWidth, wordFitBasis } from "@/lib/theme";
 
 export default function Fraud() {
   const state = useApi(
@@ -15,6 +15,7 @@ export default function Fraud() {
       return { summary, flagged };
     }, []),
   );
+  const { fontScale } = useWindowDimensions();
 
   if (state.error && !state.data) {
     return (
@@ -80,9 +81,23 @@ export default function Fraud() {
                   {Object.entries(f.features).map(([k, v]) => {
                     const feature = fraudFeature(k, Number(v));
                     return (
-                      <View key={k} style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-                        <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, flex: 1 }}>{feature.label}</Text>
-                        <Text style={{ color: COLORS.text, fontSize: fontSize.caption, textAlign: "right", flexShrink: 1 }}>
+                      // Wraps, so at large text sizes a long value moves under its
+                      // label instead of squeezing it until "Amount" split.
+                      <View key={k} style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 12 }}>
+                        <Text
+                          style={{
+                            color: COLORS.muted, fontSize: fontSize.caption, flexGrow: 1, flexShrink: 1, flexBasis: 0,
+                            minWidth: wordFitBasis(longestWordWidth(feature.label, fontSize.caption), fontScale),
+                          }}
+                        >
+                          {feature.label}
+                        </Text>
+                        <Text
+                          style={{
+                            color: COLORS.text, fontSize: fontSize.caption, textAlign: "right", flexShrink: 1, marginLeft: "auto",
+                            minWidth: wordFitBasis(longestWordWidth(feature.value, fontSize.caption), fontScale),
+                          }}
+                        >
                           {feature.value}
                         </Text>
                       </View>

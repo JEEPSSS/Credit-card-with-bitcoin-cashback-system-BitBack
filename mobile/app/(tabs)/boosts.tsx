@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { View, Text, Pressable, Modal } from "react-native";
+import { View, Text, Pressable, Modal, useWindowDimensions } from "react-native";
 import { aiAPI, rewardsAPI } from "@/lib/api";
 import { pct, titleCase, usd } from "@/lib/format";
 import { useAction, useApi } from "@/lib/useApi";
@@ -7,7 +7,7 @@ import { refreshError } from "@/lib/screenState";
 import type { BoostOption } from "@/lib/types";
 import { Button, Card, COLORS, ErrorNote, Header, InlineError, Label, Loading, Num, Screen } from "@/components/ui";
 import { Flame, Sparkles, iconNamed } from "@/components/icons";
-import { CATEGORY_ICON, font, fontSize, iconSize, space } from "@/lib/theme";
+import { CATEGORY_ICON, font, fontSize, iconSize, longestWordWidth, space, wordFitBasis } from "@/lib/theme";
 
 export default function Boosts() {
   const [confirm, setConfirm] = useState<string | null>(null);
@@ -18,6 +18,7 @@ export default function Boosts() {
       return { boosts, rec };
     }, []),
   );
+  const { fontScale } = useWindowDimensions();
 
   const activate = useAction(async (category: string) => {
     await rewardsAPI.activate(category);
@@ -108,21 +109,32 @@ export default function Boosts() {
                 (c.is_active ? ". Boost active" : "")
               }
               accessibilityState={{ disabled: c.is_active }}
+              // Wraps, so at large text sizes the rates move under the name
+              // instead of squeezing "Entertainment" until it split.
               style={({ pressed }) => ({
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12,
+                flexDirection: "row", flexWrap: "wrap", alignItems: "center", rowGap: space.sm,
+                padding: 14, borderRadius: 12,
                 backgroundColor: COLORS.card, borderWidth: 1,
                 borderColor: c.is_active ? COLORS.primary : COLORS.border,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
               <Icon size={iconSize.md} color={c.is_active ? COLORS.primary : COLORS.muted} />
-              <View style={{ flex: 1, marginLeft: 12 }}>
+              <View
+                style={{
+                  flexGrow: 1, flexShrink: 1, flexBasis: 0, marginLeft: 12, marginRight: space.sm,
+                  minWidth: Math.max(
+                    wordFitBasis(longestWordWidth(titleCase(c.category), fontSize.body), fontScale),
+                    wordFitBasis(longestWordWidth(c.description, fontSize.caption), fontScale),
+                  ),
+                }}
+              >
                 <Text style={{ color: COLORS.text, fontSize: fontSize.body }}>{titleCase(c.category)}</Text>
                 <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 2 }}>{c.description}</Text>
               </View>
               {/* Before and after, joined by an arrow: two stacked rates told
                   apart only by colour did not say which was which. */}
-              <View style={{ alignItems: "flex-end" }}>
+              <View style={{ alignItems: "flex-end", marginLeft: "auto" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: space.xs }}>
                   <Num size={fontSize.caption} color={COLORS.muted}>{pct(c.base_rate, 1)}</Num>
                   <Text style={{ color: COLORS.muted, fontSize: fontSize.caption }}>→</Text>
