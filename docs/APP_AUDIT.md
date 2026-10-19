@@ -87,8 +87,10 @@ app complies with MASVS.
 | A11 | Accessibility | WCAG 1.4.4 | Found on a device at 130% and 200% text: the payment card's lettering, amount presets, stat tiles and reward figures clipped | 2 | Fixed in `467d1b7` (card text capped at 1.2×, rows wrap); verified at 130% in round 3, where 200% still showed A12 |
 | A12 | Accessibility | WCAG 1.4.4 | Round 3 at 200%: three tab labels cut short; Boosts' "Extra per month" ran off its card. Changing the text size while the app ran left Home clipped until a restart | 2 | 200% on a fresh launch: fixed in `a5e3b87` and verified in round 4. Changing the size while the app runs: still failing; see A13 |
 | A13 | Accessibility | WCAG 1.4.4; Android State_Preservation | Changing the system text size while the app is open restarts it on Home, loses anything typed (42.75 reset to 25), and leaves text clipped until a full restart, in both directions. Cause: Android recreates the screen because MainActivity does not declare `fontScale` among the changes it handles (checked by generating the Android project) | 2 | **Partly fixed, released** in preview 2 (`v1.0.0-preview.2`, round 5): no restart, typed input kept, and going back to a smaller size recovers. Still open: growing the text while the app runs clips until the app is reopened. Likely cause: React Native measures text with the display metrics read at start-up, so larger text is drawn in boxes measured at the old size. Workaround: reopen the app after making text larger |
+| A14 | Accessibility | WCAG 1.4.4; Nielsen #8 | Found in the demo recording at 200% text: words split mid-line ("New tran / saction", "Platinu / m", "Fraud pro / tection", "Produ / ct res / earch"). Nothing was cut off, but the words were hard to read | 2 | Fixed in `213356d`: rows wrap before a word would split. Needs a device check |
 | U1 | Usability | Nielsen #1 | "Copy key" gave no sign it had copied | 1 | Fixed |
 | U2 | Usability | Nielsen #9 | Invalid amount left a greyed-out button with no reason | 1 | Fixed |
+| U3 | Usability | Nielsen #2 | Found in the demo recording: every time was shown eight hours early in Singapore. A purchase made a moment before read "8h ago" and was listed at 6:50 AM, not 2:50 PM. Cause: the API sends UTC without an offset and the app read it as local time. The demo history had the matching fault: Singapore hours stored as UTC, so an ordinary afternoon purchase looked like an unusual hour to the fraud model and was flagged (70/100) | 2 | Fixed in `bddc9d2` (app) and `512d1fb` (seeder). Needs a device check, and the live demo account needs re-seeding to pick up the seeder fix |
 | R1 | Release | EAS Update debugging | No way to see on a phone which update it runs | 2 | Fixed: build info on More |
 | A10 | Accessibility | WCAG 2.4.11; Nielsen #3 | While the server wakes (up to a minute) the banner covers the top of every screen and takes taps on most of the back button and the notification bell | 2 | Fixed: the banner sits in the page and pushes content down |
 | C3 | Security | MASVS-CODE-3 | `npm audit`: 43 advisories (25 high, 18 moderate) | 2 | Not fixed: needs an Expo SDK major upgrade |
@@ -97,7 +99,8 @@ app complies with MASVS.
 
 Two problems were rated severity 3 (S1 and E1) and none severity 4; both are
 fixed in the app. A10, then E4, A11, A12 and A13, were found later on a device;
-all but A13, which needs a new APK, are fixed in updates.
+all but A13, which needs a new APK, are fixed in updates. U3 and A14 were found
+while recording the demo video (round 6).
 
 ## 1. Accessibility: WCAG 2.2 AA and Android accessibility
 
@@ -475,6 +478,22 @@ release notes state the remaining text-size limitation. Preview 1
 (`v1.0.0-preview`) is unchanged and remains the fallback; the README's "latest
 release" link now resolves to preview 2.
 
+### Round 6 (19 October 2026, demo video recording)
+
+The demo video was recorded on the emulator with preview 2 and the demo
+account. Watching the footage found two faults the earlier rounds missed:
+
+- **U3, times.** The $25 dining purchase made for the video showed as "8h ago"
+  in Wallet and at 6:50 AM in History, recorded during a Singapore afternoon.
+  The same purchase was flagged 70/100, partly for "time of day: unusual for
+  you". Both trace to UTC timestamps: the app read them as local time, and the
+  seeder had stored Singapore hours as if they were UTC.
+- **A14, 200% text.** Home and More split words mid-word. Earlier rounds checked
+  for clipped text, and nothing was clipped, so these were not recorded.
+
+The narration was corrected to match: it no longer says the layout "holds" at
+double text size, and it explains the flag on the purchase.
+
 ## Tests added
 
 - `mobile/lib/format.test.ts`: plain-language fraud features, scorer names,
@@ -486,8 +505,19 @@ release" link now resolves to preview 2.
 - `mobile/lib/screenState.test.ts`: when a failed refresh is shown over data still on
   screen (E4).
 - `tests/test_icon_names.py`: every icon name the backend can send is shipped.
+- `mobile/lib/time.test.ts`, and API-format timestamps in `statement.test.ts` and
+  `format.test.ts`: times from the API read as UTC (U3). The front-end suite now
+  runs in Singapore time (`mobile/vitest.config.mts`); in UTC it could not tell
+  UTC from local time. Four of these tests fail on the old code.
+- `tests/test_seed_demo.py`: the demo history falls between 8 AM and 10 PM
+  Singapore time, and a Singapore afternoon is a routine hour for the fraud
+  model (U3).
+- `mobile/lib/theme.test.ts`: Home's buttons and stat tiles share a line at 100%
+  on a 360dp phone, wrap at 200%, and never leave a tile narrower than its
+  level name (A14).
 
-Front-end tests 39 → 58; backend 236 → 239 (plus 2 that run only on Postgres).
+Front-end tests 39 → 58 → 72; backend 236 → 239 → 241 (plus 2 that run only on
+Postgres).
 
 ## Sources
 
@@ -539,10 +569,16 @@ that changed since.
 | Only the offline notice (E4) | `git revert 2ed0126` |
 | Only the round-three text fixes (A12) | `git revert a5e3b87` |
 | Only the History chip width | `git revert 96837ac` |
+| Only the time-zone fix in the app (U3) | `git revert bddc9d2` |
+| Only the demo seeder change (U3) | `git revert 512d1fb` |
+| Only the 200% word wrapping (A14) | `git revert 213356d` |
 | One fix | `git revert <its commit>`; `git log --oneline 2eed728..main` lists them |
 | The whole audit at once | `git revert -m 1 <merge commit>`; `git log --merges -1` shows it |
 
 Nothing on the server changed, so none of these needs a Render deploy.
+Re-seeding the demo account is a change to data, not code, and a revert does
+not undo it: to go back, check out `seed_demo.py` from before `512d1fb` and run
+it again.
 
 **On phones.** The app changes reach phones as an over-the-air update, and an
 update can be replaced by an older one:
