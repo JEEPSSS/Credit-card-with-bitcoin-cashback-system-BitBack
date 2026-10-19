@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { sectionTitle, timeOfDay, toSections } from "./statement";
 import type { Transaction } from "./types";
 
-const NOW = new Date("2026-03-15T12:00:00");
+// Noon on 15 March in Singapore, where the suite runs (see vitest.config.ts).
+const NOW = new Date(2026, 2, 15, 12, 0);
+
+// Transactions carry the API's timestamps: UTC, with no offset. 02:00 UTC is
+// 10:00 in Singapore, the same day.
 
 function tx(id: number, iso: string, satsEarned = 100): Transaction {
   return {
@@ -52,9 +56,9 @@ describe("toSections", () => {
   it("groups by day, newest day first", () => {
     const sections = toSections(
       [
-        tx(1, "2026-03-13T10:00:00"),
-        tx(2, "2026-03-15T10:00:00"),
-        tx(3, "2026-03-14T10:00:00"),
+        tx(1, "2026-03-13T02:00:00"),
+        tx(2, "2026-03-15T02:00:00"),
+        tx(3, "2026-03-14T02:00:00"),
       ],
       NOW,
     );
@@ -64,9 +68,9 @@ describe("toSections", () => {
   it("subtotals each day", () => {
     const sections = toSections(
       [
-        tx(1, "2026-03-15T09:00:00", 300),
-        tx(2, "2026-03-15T18:00:00", 450),
-        tx(3, "2026-03-14T09:00:00", 120),
+        tx(1, "2026-03-15T01:00:00", 300),
+        tx(2, "2026-03-15T03:00:00", 450),
+        tx(3, "2026-03-14T01:00:00", 120),
       ],
       NOW,
     );
@@ -76,7 +80,7 @@ describe("toSections", () => {
 
   it("orders rows newest-first inside a day", () => {
     const sections = toSections(
-      [tx(1, "2026-03-15T09:00:00"), tx(2, "2026-03-15T18:00:00")],
+      [tx(1, "2026-03-15T01:00:00"), tx(2, "2026-03-15T03:00:00")],
       NOW,
     );
     expect(sections[0].data.map((t) => t.id)).toEqual([2, 1]);
@@ -84,13 +88,19 @@ describe("toSections", () => {
 
   it("does not assume the input is already sorted", () => {
     const ascending = [
-      tx(1, "2026-03-13T10:00:00"),
-      tx(2, "2026-03-14T10:00:00"),
-      tx(3, "2026-03-15T10:00:00"),
+      tx(1, "2026-03-13T02:00:00"),
+      tx(2, "2026-03-14T02:00:00"),
+      tx(3, "2026-03-15T02:00:00"),
     ];
     expect(toSections(ascending, NOW).map((s) => s.title)).toEqual([
       "Today", "Yesterday", "Friday",
     ]);
+  });
+
+  it("files a purchase under the user's own day, not the server's", () => {
+    // 17:30 UTC on the 14th is 01:30 on the 15th in Singapore.
+    const sections = toSections([tx(1, "2026-03-14T17:30:00")], NOW);
+    expect(sections.map((s) => s.title)).toEqual(["Today"]);
   });
 
   it("returns nothing for an empty statement", () => {
@@ -99,7 +109,7 @@ describe("toSections", () => {
 
   it("gives every section a stable unique key", () => {
     const sections = toSections(
-      [tx(1, "2026-03-15T09:00:00"), tx(2, "2026-03-14T09:00:00")],
+      [tx(1, "2026-03-15T01:00:00"), tx(2, "2026-03-14T01:00:00")],
       NOW,
     );
     expect(new Set(sections.map((s) => s.key)).size).toBe(2);
@@ -108,6 +118,11 @@ describe("toSections", () => {
 
 describe("timeOfDay", () => {
   it("renders a clock time, since the date is in the header", () => {
-    expect(timeOfDay("2026-03-15T14:05:00")).toMatch(/^2:05\s?PM$/);
+    expect(timeOfDay("2026-03-15T06:05:00")).toMatch(/^2:05\s?PM$/);
+  });
+
+  it("shows the purchase from the demo recording at the time it was made", () => {
+    // Listed at 6:50 AM before the fix, for a purchase made at 2:50 PM.
+    expect(timeOfDay("2026-10-19T06:50:00")).toMatch(/^2:50\s?PM$/);
   });
 });

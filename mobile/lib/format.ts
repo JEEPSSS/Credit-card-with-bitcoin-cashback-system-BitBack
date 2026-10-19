@@ -1,4 +1,5 @@
 import { RISK_FLAG_THRESHOLD, RISK_WATCH_THRESHOLD, color } from "./theme";
+import { serverTime } from "./time";
 
 /** Digit grouping everywhere. A raw 640528 is unreadable; 640,528 is not. */
 export const sats = (n: number) => Math.round(n ?? 0).toLocaleString("en-US");
@@ -14,7 +15,7 @@ export const usdCompact = (n: number) =>
 export const pct = (n: number, digits = 2) => `${((n ?? 0) * 100).toFixed(digits)}%`;
 
 export function relativeTime(iso: string) {
-  const then = new Date(iso).getTime();
+  const then = serverTime(iso).getTime();
   const mins = Math.floor((Date.now() - then) / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
@@ -22,7 +23,7 @@ export function relativeTime(iso: string) {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return serverTime(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export const titleCase = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);

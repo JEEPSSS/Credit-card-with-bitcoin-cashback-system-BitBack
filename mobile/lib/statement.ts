@@ -1,3 +1,4 @@
+import { serverTime } from "./time";
 import type { Transaction } from "./types";
 
 /**
@@ -62,7 +63,7 @@ export function toSections(
   const byDay = new Map<number, Transaction[]>();
 
   for (const tx of transactions) {
-    const day = startOfDay(new Date(tx.created_at));
+    const day = startOfDay(serverTime(tx.created_at));
     const bucket = byDay.get(day);
     if (bucket) bucket.push(tx);
     else byDay.set(day, [tx]);
@@ -75,14 +76,14 @@ export function toSections(
       title: sectionTitle(new Date(day), now),
       totalSats: rows.reduce((sum, t) => sum + t.sats_earned, 0),
       data: [...rows].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        (a, b) => serverTime(b.created_at).getTime() - serverTime(a.created_at).getTime(),
       ),
     }));
 }
 
 /** Time of day for a row, now that the date lives in the section header. */
 export function timeOfDay(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
+  return serverTime(iso).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
   });
