@@ -286,6 +286,36 @@ export function scaledLineHeight(size: number, fontScale: number, max = MAX_DISP
 }
 
 /**
+ * flexBasis for an item in a wrapping row: the room its longest word needs at
+ * the current text size, plus padding, which does not grow with text.
+ *
+ * Android splits a word that is wider than its line, so at 200% text "New
+ * transaction" became "New tran / saction" and "Platinum" "Platinu / m". With
+ * this basis, items sit side by side while every word fits and move to a line
+ * of their own once one would not.
+ */
+export function wordFitBasis(wordWidth: number, fontScale: number, padding = 0): number {
+  return Math.ceil(wordWidth * Math.max(fontScale, 1)) + padding;
+}
+
+/**
+ * A generous estimate of a text's longest word at 100% text size: 0.62em a
+ * letter, where Inter averages about 0.5em and its widest common letters about
+ * 0.6em. React Native cannot measure text before laying it out. Generous means
+ * a row wraps a little early, never late.
+ */
+export function longestWordWidth(text: string, size: number): number {
+  return Math.ceil(Math.max(0, ...text.split(/\s+/).map((w) => w.length)) * size * 0.62);
+}
+
+/**
+ * "Diamond", the widest level name, measured in Inter Medium at the body size
+ * (68 at 100%). Measured rather than estimated: the estimate is wide enough for
+ * "Platinum" to push three stat tiles onto two lines on a 360dp phone at 100%.
+ */
+export const LEVEL_NAME_WIDTH = 70;
+
+/**
  * Balance and sats figures. Tabular figures stop digits jittering as values
  * update, which matters because the odometer animates.
  */
