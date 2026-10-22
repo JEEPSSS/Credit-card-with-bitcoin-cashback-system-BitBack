@@ -8,7 +8,7 @@ user's own transaction history. FastAPI backend, Expo (React Native) mobile app.
 ## Try it
 
 - **Android app:** download the APK from the
-  [latest release](https://github.com/JEEPSSS/Bitcoin-cashback-system/releases/latest)
+  [latest release](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest)
   and open it on an Android phone (allow "install unknown apps" when asked).
 - **Live API:** https://bitcoin-survey.onrender.com (health check at
   `/api/health`). It runs on Render's free tier and sleeps when idle, so the
