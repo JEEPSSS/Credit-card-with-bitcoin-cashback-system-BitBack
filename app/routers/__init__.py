@@ -13,6 +13,7 @@ from app.routers import (
                          notifications,
                          preferences,
                          referrals,
+                         reset_page,
                          rewards,
                          survey,
                          transactions,
@@ -33,4 +34,5 @@ ALL_ROUTERS = [
     ml.router,
     survey.router,
     legal.router,
+    reset_page.router,
 ]

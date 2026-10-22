@@ -14,7 +14,7 @@ from app.config import settings
 
 router = APIRouter(tags=["meta"])
 
-LAST_UPDATED = "16 October 2026"
+LAST_UPDATED = "22 October 2026"
 
 
 def _contact() -> str:
@@ -22,6 +22,13 @@ def _contact() -> str:
         email = escape(settings.support_email)
         return f'email <a href="mailto:{email}">{email}</a>'
     return "use the contact link on the app's store listing"
+
+
+def _email_provider() -> str:
+    if not settings.email_enabled:
+        return ""
+    return ("\n  <li><strong>Resend</strong> delivers password-reset emails. When you ask for"
+            " one, it receives your email address and the message; nothing else.</li>")
 
 
 PAGE = """<!doctype html>
@@ -103,7 +110,7 @@ and are never published through the app.</p>
   <li><strong>Expo</strong> delivers app updates. The app tells Expo its version and
     platform to fetch them; no account data is sent.</li>
   <li><strong>CoinGecko</strong> and <strong>Coinbase</strong> supply the bitcoin price.
-    Our server asks for the price; nothing about you is sent.</li>
+    Our server asks for the price; nothing about you is sent.</li>{email_provider}
 </ul>
 <p>We do not sell or share your data with anyone else.</p>
 
@@ -122,4 +129,5 @@ Referral bonuses already paid to another user stay with them.</p>
 
 @router.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
 def privacy_policy() -> str:
-    return PAGE.format(updated=LAST_UPDATED, contact=_contact())
+    return PAGE.format(updated=LAST_UPDATED, contact=_contact(),
+                       email_provider=_email_provider())
