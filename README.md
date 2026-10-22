@@ -10,6 +10,9 @@ user's own transaction history. FastAPI backend, Expo (React Native) mobile app.
 - **Android app:** download the APK from the
   [latest release](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest)
   and open it on an Android phone (allow "install unknown apps" when asked).
+- **iPhone beta:** install [TestFlight](https://apps.apple.com/app/testflight/id899247664),
+  then open the [BitBack TestFlight invitation](https://testflight.apple.com/join/Bg5kgsmC)
+  on your iPhone. Tap **Accept**, then **Install** to download BitBack.
 - **Live API:** https://bitcoin-survey.onrender.com (health check at
   `/api/health`). It runs on Render's free tier and sleeps when idle, so the
   first request can take up to a minute; the app shows "Waking up the
@@ -186,7 +189,3 @@ insights screen. All six are evaluated, the rule engines included, in
   against synthetic cardholders whose correct answers are known by
   construction, with separate validation and held-out seeds; real cardholders
   and real fraud will differ.
-- No iOS release yet. An iOS build has been submitted to App Review for
-  TestFlight under a shared Apple Developer account and is awaiting review;
-  earlier submissions were rejected. Only the Android APK has been released and
-  tested.
