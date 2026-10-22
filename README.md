@@ -19,6 +19,9 @@ user's own transaction history. FastAPI backend, Expo (React Native) mobile app.
   server..." while it does.
 - **Project site:** https://jeepsss.github.io/Credit-card-with-bitcoin-cashback-system-BitBack/
 - **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **Architecture review:** [findings and verification evidence](docs/ARCHITECTURE_REVIEW.md)
+  from the 23 October 2026 scan. The fraud-cache refresh and offline-startup
+  findings are recorded as open; this documentation update does not fix them.
 - **Research survey:** https://bitcoin-survey.onrender.com/survey/
 - **Privacy policy:** https://bitcoin-survey.onrender.com/privacy
 

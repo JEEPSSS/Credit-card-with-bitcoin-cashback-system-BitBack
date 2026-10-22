@@ -1,0 +1,806 @@
+{
+  "table_count": 19,
+  "tables": [
+    {
+      "model": "User",
+      "table": "users",
+      "line": 34
+    },
+    {
+      "model": "Transaction",
+      "table": "transactions",
+      "line": 59
+    },
+    {
+      "model": "RewardEvent",
+      "table": "reward_events",
+      "line": 85
+    },
+    {
+      "model": "WalletBalance",
+      "table": "wallet_balances",
+      "line": 110
+    },
+    {
+      "model": "WalletTransaction",
+      "table": "wallet_transactions",
+      "line": 118
+    },
+    {
+      "model": "UserStreak",
+      "table": "user_streaks",
+      "line": 132
+    },
+    {
+      "model": "UserActiveBoost",
+      "table": "user_active_boosts",
+      "line": 142
+    },
+    {
+      "model": "CategoryCashback",
+      "table": "category_cashback",
+      "line": 152
+    },
+    {
+      "model": "UserBadge",
+      "table": "user_badges",
+      "line": 161
+    },
+    {
+      "model": "SavingsGoal",
+      "table": "savings_goals",
+      "line": 170
+    },
+    {
+      "model": "UserRoundUpConfig",
+      "table": "roundup_configs",
+      "line": 183
+    },
+    {
+      "model": "AutoWithdrawConfig",
+      "table": "auto_withdraw_configs",
+      "line": 191
+    },
+    {
+      "model": "ReferralCode",
+      "table": "referral_codes",
+      "line": 201
+    },
+    {
+      "model": "Referral",
+      "table": "referrals",
+      "line": 211
+    },
+    {
+      "model": "PriceAlert",
+      "table": "price_alerts",
+      "line": 220
+    },
+    {
+      "model": "Notification",
+      "table": "notifications",
+      "line": 239
+    },
+    {
+      "model": "UserTOTP",
+      "table": "user_totp",
+      "line": 260
+    },
+    {
+      "model": "TransactionRiskScore",
+      "table": "transaction_risk_scores",
+      "line": 270
+    },
+    {
+      "model": "SurveyResponse",
+      "table": "survey_responses",
+      "line": 288
+    }
+  ],
+  "router_modules": 13,
+  "router_operation_count": 50,
+  "routers": [
+    {
+      "module": "app/routers/analytics.py",
+      "operations": 4,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "/analytics/spending",
+          "function": "spending",
+          "line": 41
+        },
+        {
+          "method": "get",
+          "path": "/analytics/insights",
+          "function": "insights",
+          "line": 67
+        },
+        {
+          "method": "get",
+          "path": "/analytics/recap",
+          "function": "recap",
+          "line": 103
+        },
+        {
+          "method": "get",
+          "path": "/tax/report",
+          "function": "tax_report",
+          "line": 161
+        }
+      ]
+    },
+    {
+      "module": "app/routers/auth.py",
+      "operations": 11,
+      "endpoints": [
+        {
+          "method": "post",
+          "path": "/register",
+          "function": "register",
+          "line": 56
+        },
+        {
+          "method": "post",
+          "path": "/login",
+          "function": "login",
+          "line": 93
+        },
+        {
+          "method": "get",
+          "path": "/me",
+          "function": "me",
+          "line": 113
+        },
+        {
+          "method": "delete",
+          "path": "/me",
+          "function": "delete_account",
+          "line": 118
+        },
+        {
+          "method": "post",
+          "path": "/forgot-password",
+          "function": "forgot_password",
+          "line": 148
+        },
+        {
+          "method": "post",
+          "path": "/reset-password",
+          "function": "reset_password",
+          "line": 163
+        },
+        {
+          "method": "post",
+          "path": "/2fa/setup",
+          "function": "totp_setup",
+          "line": 178
+        },
+        {
+          "method": "post",
+          "path": "/2fa/verify",
+          "function": "totp_verify",
+          "line": 195
+        },
+        {
+          "method": "post",
+          "path": "/2fa/disable",
+          "function": "totp_disable",
+          "line": 211
+        },
+        {
+          "method": "post",
+          "path": "/2fa/authenticate",
+          "function": "totp_authenticate",
+          "line": 227
+        },
+        {
+          "method": "get",
+          "path": "/2fa/status",
+          "function": "totp_status",
+          "line": 252
+        }
+      ]
+    },
+    {
+      "module": "app/routers/goals.py",
+      "operations": 4,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "",
+          "function": "list_goals",
+          "line": 45
+        },
+        {
+          "method": "post",
+          "path": "",
+          "function": "create_goal",
+          "line": 52
+        },
+        {
+          "method": "post",
+          "path": "/{goal_id}/allocate",
+          "function": "allocate_goal",
+          "line": 63
+        },
+        {
+          "method": "delete",
+          "path": "/{goal_id}",
+          "function": "delete_goal",
+          "line": 82
+        }
+      ]
+    },
+    {
+      "module": "app/routers/legal.py",
+      "operations": 1,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "/privacy",
+          "function": "privacy_policy",
+          "line": 124
+        }
+      ]
+    },
+    {
+      "module": "app/routers/market.py",
+      "operations": 2,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "/btc/price",
+          "function": "btc_price",
+          "line": 13
+        },
+        {
+          "method": "get",
+          "path": "/categories",
+          "function": "categories",
+          "line": 30
+        }
+      ]
+    },
+    {
+      "module": "app/routers/ml.py",
+      "operations": 6,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "/forecast",
+          "function": "forecast",
+          "line": 20
+        },
+        {
+          "method": "get",
+          "path": "/fraud/summary",
+          "function": "fraud_summary",
+          "line": 28
+        },
+        {
+          "method": "get",
+          "path": "/fraud/flagged",
+          "function": "fraud_flagged",
+          "line": 33
+        },
+        {
+          "method": "get",
+          "path": "/fraud/score/{transaction_id}",
+          "function": "fraud_score",
+          "line": 46
+        },
+        {
+          "method": "get",
+          "path": "/ai/boost-recommendation",
+          "function": "boost_recommendation",
+          "line": 59
+        },
+        {
+          "method": "get",
+          "path": "/ai/persona",
+          "function": "persona",
+          "line": 64
+        }
+      ]
+    },
+    {
+      "module": "app/routers/notifications.py",
+      "operations": 5,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "/alerts",
+          "function": "list_alerts",
+          "line": 15
+        },
+        {
+          "method": "post",
+          "path": "/alerts",
+          "function": "create_alert",
+          "line": 24
+        },
+        {
+          "method": "delete",
+          "path": "/alerts/{alert_id}",
+          "function": "delete_alert",
+          "line": 44
+        },
+        {
+          "method": "get",
+          "path": "/notifications",
+          "function": "list_notifications",
+          "line": 56
+        },
+        {
+          "method": "post",
+          "path": "/notifications/read-all",
+          "function": "read_all",
+          "line": 73
+        }
+      ]
+    },
+    {
+      "module": "app/routers/preferences.py",
+      "operations": 4,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "/roundup/config",
+          "function": "get_roundup",
+          "line": 24
+        },
+        {
+          "method": "put",
+          "path": "/roundup/config",
+          "function": "set_roundup",
+          "line": 30
+        },
+        {
+          "method": "get",
+          "path": "/auto-withdraw/config",
+          "function": "get_auto_withdraw",
+          "line": 39
+        },
+        {
+          "method": "put",
+          "path": "/auto-withdraw/config",
+          "function": "set_auto_withdraw",
+          "line": 46
+        }
+      ]
+    },
+    {
+      "module": "app/routers/referrals.py",
+      "operations": 2,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "",
+          "function": "my_referral",
+          "line": 14
+        },
+        {
+          "method": "get",
+          "path": "/leaderboard",
+          "function": "referral_leaderboard",
+          "line": 24
+        }
+      ]
+    },
+    {
+      "module": "app/routers/rewards.py",
+      "operations": 3,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "/summary",
+          "function": "rewards_summary",
+          "line": 24
+        },
+        {
+          "method": "get",
+          "path": "/boosts",
+          "function": "list_boosts",
+          "line": 45
+        },
+        {
+          "method": "post",
+          "path": "/boosts/activate",
+          "function": "activate_boost",
+          "line": 65
+        }
+      ]
+    },
+    {
+      "module": "app/routers/survey.py",
+      "operations": 2,
+      "endpoints": [
+        {
+          "method": "post",
+          "path": "/responses",
+          "function": "submit_response",
+          "line": 39
+        },
+        {
+          "method": "get",
+          "path": "/summary",
+          "function": "summary",
+          "line": 131
+        }
+      ]
+    },
+    {
+      "module": "app/routers/transactions.py",
+      "operations": 3,
+      "endpoints": [
+        {
+          "method": "post",
+          "path": "/transactions",
+          "function": "create_transaction",
+          "line": 58
+        },
+        {
+          "method": "get",
+          "path": "/transactions",
+          "function": "list_transactions",
+          "line": 152
+        },
+        {
+          "method": "post",
+          "path": "/rewards/preview",
+          "function": "preview_reward",
+          "line": 173
+        }
+      ]
+    },
+    {
+      "module": "app/routers/wallet.py",
+      "operations": 3,
+      "endpoints": [
+        {
+          "method": "get",
+          "path": "",
+          "function": "wallet",
+          "line": 23
+        },
+        {
+          "method": "get",
+          "path": "/growth",
+          "function": "wallet_growth",
+          "line": 37
+        },
+        {
+          "method": "get",
+          "path": "/transactions",
+          "function": "wallet_transactions",
+          "line": 76
+        }
+      ]
+    }
+  ],
+  "mobile_versions": {
+    "expo": "~54.0.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "expo-router": "~6.0.24",
+    "axios": "1.20.0",
+    "expo-secure-store": "~15.0.8"
+  },
+  "api_operation_count": 51,
+  "api_operations": [
+    {
+      "file": "main.py",
+      "line": 258,
+      "method": "get",
+      "path": "/api/health"
+    },
+    {
+      "file": "main.py",
+      "line": 277,
+      "method": "get",
+      "path": "/api/meta/client-ip"
+    },
+    {
+      "file": "app/routers/analytics.py",
+      "line": 41,
+      "method": "get",
+      "path": "/api/analytics/spending"
+    },
+    {
+      "file": "app/routers/analytics.py",
+      "line": 67,
+      "method": "get",
+      "path": "/api/analytics/insights"
+    },
+    {
+      "file": "app/routers/analytics.py",
+      "line": 103,
+      "method": "get",
+      "path": "/api/analytics/recap"
+    },
+    {
+      "file": "app/routers/analytics.py",
+      "line": 161,
+      "method": "get",
+      "path": "/api/tax/report"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 56,
+      "method": "post",
+      "path": "/api/auth/register"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 93,
+      "method": "post",
+      "path": "/api/auth/login"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 113,
+      "method": "get",
+      "path": "/api/auth/me"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 118,
+      "method": "delete",
+      "path": "/api/auth/me"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 148,
+      "method": "post",
+      "path": "/api/auth/forgot-password"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 163,
+      "method": "post",
+      "path": "/api/auth/reset-password"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 178,
+      "method": "post",
+      "path": "/api/auth/2fa/setup"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 195,
+      "method": "post",
+      "path": "/api/auth/2fa/verify"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 211,
+      "method": "post",
+      "path": "/api/auth/2fa/disable"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 227,
+      "method": "post",
+      "path": "/api/auth/2fa/authenticate"
+    },
+    {
+      "file": "app/routers/auth.py",
+      "line": 252,
+      "method": "get",
+      "path": "/api/auth/2fa/status"
+    },
+    {
+      "file": "app/routers/goals.py",
+      "line": 45,
+      "method": "get",
+      "path": "/api/goals"
+    },
+    {
+      "file": "app/routers/goals.py",
+      "line": 52,
+      "method": "post",
+      "path": "/api/goals"
+    },
+    {
+      "file": "app/routers/goals.py",
+      "line": 63,
+      "method": "post",
+      "path": "/api/goals/{goal_id}/allocate"
+    },
+    {
+      "file": "app/routers/goals.py",
+      "line": 82,
+      "method": "delete",
+      "path": "/api/goals/{goal_id}"
+    },
+    {
+      "file": "app/routers/market.py",
+      "line": 13,
+      "method": "get",
+      "path": "/api/btc/price"
+    },
+    {
+      "file": "app/routers/market.py",
+      "line": 30,
+      "method": "get",
+      "path": "/api/categories"
+    },
+    {
+      "file": "app/routers/ml.py",
+      "line": 20,
+      "method": "get",
+      "path": "/api/forecast"
+    },
+    {
+      "file": "app/routers/ml.py",
+      "line": 28,
+      "method": "get",
+      "path": "/api/fraud/summary"
+    },
+    {
+      "file": "app/routers/ml.py",
+      "line": 33,
+      "method": "get",
+      "path": "/api/fraud/flagged"
+    },
+    {
+      "file": "app/routers/ml.py",
+      "line": 46,
+      "method": "get",
+      "path": "/api/fraud/score/{transaction_id}"
+    },
+    {
+      "file": "app/routers/ml.py",
+      "line": 59,
+      "method": "get",
+      "path": "/api/ai/boost-recommendation"
+    },
+    {
+      "file": "app/routers/ml.py",
+      "line": 64,
+      "method": "get",
+      "path": "/api/ai/persona"
+    },
+    {
+      "file": "app/routers/notifications.py",
+      "line": 15,
+      "method": "get",
+      "path": "/api/alerts"
+    },
+    {
+      "file": "app/routers/notifications.py",
+      "line": 24,
+      "method": "post",
+      "path": "/api/alerts"
+    },
+    {
+      "file": "app/routers/notifications.py",
+      "line": 44,
+      "method": "delete",
+      "path": "/api/alerts/{alert_id}"
+    },
+    {
+      "file": "app/routers/notifications.py",
+      "line": 56,
+      "method": "get",
+      "path": "/api/notifications"
+    },
+    {
+      "file": "app/routers/notifications.py",
+      "line": 73,
+      "method": "post",
+      "path": "/api/notifications/read-all"
+    },
+    {
+      "file": "app/routers/preferences.py",
+      "line": 24,
+      "method": "get",
+      "path": "/api/roundup/config"
+    },
+    {
+      "file": "app/routers/preferences.py",
+      "line": 30,
+      "method": "put",
+      "path": "/api/roundup/config"
+    },
+    {
+      "file": "app/routers/preferences.py",
+      "line": 39,
+      "method": "get",
+      "path": "/api/auto-withdraw/config"
+    },
+    {
+      "file": "app/routers/preferences.py",
+      "line": 46,
+      "method": "put",
+      "path": "/api/auto-withdraw/config"
+    },
+    {
+      "file": "app/routers/referrals.py",
+      "line": 14,
+      "method": "get",
+      "path": "/api/referral"
+    },
+    {
+      "file": "app/routers/referrals.py",
+      "line": 24,
+      "method": "get",
+      "path": "/api/referral/leaderboard"
+    },
+    {
+      "file": "app/routers/rewards.py",
+      "line": 24,
+      "method": "get",
+      "path": "/api/rewards/summary"
+    },
+    {
+      "file": "app/routers/rewards.py",
+      "line": 45,
+      "method": "get",
+      "path": "/api/rewards/boosts"
+    },
+    {
+      "file": "app/routers/rewards.py",
+      "line": 65,
+      "method": "post",
+      "path": "/api/rewards/boosts/activate"
+    },
+    {
+      "file": "app/routers/survey.py",
+      "line": 39,
+      "method": "post",
+      "path": "/api/survey/responses"
+    },
+    {
+      "file": "app/routers/survey.py",
+      "line": 131,
+      "method": "get",
+      "path": "/api/survey/summary"
+    },
+    {
+      "file": "app/routers/transactions.py",
+      "line": 58,
+      "method": "post",
+      "path": "/api/transactions"
+    },
+    {
+      "file": "app/routers/transactions.py",
+      "line": 152,
+      "method": "get",
+      "path": "/api/transactions"
+    },
+    {
+      "file": "app/routers/transactions.py",
+      "line": 173,
+      "method": "post",
+      "path": "/api/rewards/preview"
+    },
+    {
+      "file": "app/routers/wallet.py",
+      "line": 23,
+      "method": "get",
+      "path": "/api/wallet"
+    },
+    {
+      "file": "app/routers/wallet.py",
+      "line": 37,
+      "method": "get",
+      "path": "/api/wallet/growth"
+    },
+    {
+      "file": "app/routers/wallet.py",
+      "line": 76,
+      "method": "get",
+      "path": "/api/wallet/transactions"
+    }
+  ],
+  "mobile_route_files_including_redirect": 24,
+  "mobile_screens_excluding_layouts_and_root_redirect": 23,
+  "migration_count": 4,
+  "response_model_inventory": {
+    "router_operations": 50,
+    "router_operations_with_explicit_response_model": 10
+  }
+}

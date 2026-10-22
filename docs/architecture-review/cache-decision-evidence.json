@@ -1,0 +1,26 @@
+{
+  "method": "Isolated execution of actual _cache_get helper with fake objects; no imports of application/database code",
+  "history_limit": 500,
+  "refit_interval": 25,
+  "cases": [
+    {
+      "trained_at_size": 475,
+      "capped_history_size": 500,
+      "returns_existing_model": false,
+      "refit_requested": true
+    },
+    {
+      "trained_at_size": 495,
+      "capped_history_size": 500,
+      "returns_existing_model": true,
+      "refit_requested": false
+    },
+    {
+      "trained_at_size": 500,
+      "capped_history_size": 500,
+      "returns_existing_model": true,
+      "refit_requested": false
+    }
+  ],
+  "limitation": "Cache decision verified in isolation; no full forest retraining or live request was performed"
+}

@@ -7,6 +7,13 @@ and rule engines, see [EVALUATION.md](EVALUATION.md); for security and
 reliability work, [BACKEND_HARDENING.md](BACKEND_HARDENING.md); for the app
 audit and device testing, [APP_AUDIT.md](APP_AUDIT.md).
 
+The [23 October 2026 architecture review](ARCHITECTURE_REVIEW.md) checks this
+description against commit `5eda12e` and includes its verification evidence.
+Two findings remain open in that code: the fraud model's cache can stop
+refreshing when its 500-purchase history window fills, and an offline cold
+launch can route a valid session to sign-in. The review records these findings;
+no runtime fix is included in this documentation update.
+
 ## The idea
 
 A card purchase earns cashback in satoshis (sats; 1 bitcoin = 100,000,000

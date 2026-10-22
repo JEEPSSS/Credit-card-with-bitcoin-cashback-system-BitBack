@@ -1,0 +1,65 @@
+{
+  "cli_version": "gh version 2.101.0 (2026-09-15)",
+  "repository": {
+    "defaultBranchRef": {
+      "name": "main"
+    },
+    "homepageUrl": "https://jeepsss.github.io/Credit-card-with-bitcoin-cashback-system-BitBack/",
+    "nameWithOwner": "JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack",
+    "pushedAt": "2026-10-22T16:12:13Z",
+    "url": "https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack"
+  },
+  "commit": {
+    "sha": "5eda12e0dd138b008fd6e09a4f878d4bd08eed7e",
+    "url": "https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/commit/5eda12e0dd138b008fd6e09a4f878d4bd08eed7e"
+  },
+  "ci": {
+    "conclusion": "success",
+    "jobs": [
+      {
+        "conclusion": "success",
+        "name": "Mobile (typecheck)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Backend (lint + tests)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Backend on Postgres (migrations + tests)",
+        "status": "completed"
+      }
+    ],
+    "status": "completed"
+  },
+  "file_checks": [
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "bytes": 7438,
+      "content_matches_reviewed_clone": true
+    },
+    {
+      "path": "app/anomaly_detector.py",
+      "bytes": 15000,
+      "content_matches_reviewed_clone": true
+    },
+    {
+      "path": "mobile/lib/auth.tsx",
+      "bytes": 2002,
+      "content_matches_reviewed_clone": true
+    },
+    {
+      "path": "app/routers/transactions.py",
+      "bytes": 7578,
+      "content_matches_reviewed_clone": true
+    },
+    {
+      "path": "mobile/eas.json",
+      "bytes": 526,
+      "content_matches_reviewed_clone": true
+    }
+  ],
+  "operations": "Read-only repo view, run list/view, and api GET requests only"
+}

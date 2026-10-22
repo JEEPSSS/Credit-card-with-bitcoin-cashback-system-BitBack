@@ -1,0 +1,6 @@
+{
+  "scenario": "Isolated AuthProvider refresh with simulated network failure; no server call",
+  "user_after_refresh": null,
+  "root_route_if_loading_false": "/(auth)/login",
+  "device_tested": false
+}
