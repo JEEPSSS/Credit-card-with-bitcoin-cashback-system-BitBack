@@ -10,7 +10,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   async function submit() {
@@ -18,7 +18,7 @@ export default function ForgotPassword() {
     setError("");
     try {
       const r = await authAPI.forgotPassword(email.trim().toLowerCase());
-      setSent(true);
+      setSent(r.message);
       setToken(r.reset_token ?? null);
     } catch (e) {
       // Without this a failed request did nothing at all: no message, no change.
@@ -49,12 +49,12 @@ export default function ForgotPassword() {
       ) : (
         <Card>
           <Text style={{ color: COLORS.text, fontSize: fontSize.body, lineHeight: 22 }}>
-            If that email has an account, a reset link is on its way.
+            {sent}
           </Text>
           {token && (
             <>
               <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 12, lineHeight: 19 }}>
-                There is no mail server in this build, so the token is returned directly for the demo.
+                This is a demo server, so the reset token is shown here directly.
               </Text>
               <Button
                 label="Continue to reset"

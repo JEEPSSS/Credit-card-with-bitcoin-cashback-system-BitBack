@@ -29,12 +29,12 @@ cardholder's own history: two machine-learning models and four rule engines.
 | Part | Technology | What it does |
 |---|---|---|
 | Mobile app | Expo SDK 54, React Native 0.81, expo-router | 23 screens; Android APK through EAS Build; over-the-air updates through EAS Update |
-| API | Python 3.11, FastAPI, Pydantic | 51 API operations in 13 router modules; request IDs, one error format, rate limits |
+| API | Python 3.11, FastAPI, Pydantic | 51 API operations in 14 router modules; request IDs, one error format, rate limits |
 | Domain modules | Plain Python, NumPy, scikit-learn | Reward engine, fraud detector, forecast, boost recommender, persona, gamification |
 | Database | SQLAlchemy, Alembic (4 migrations) | 19 tables; SQLite in development and tests, Postgres (Neon) in production |
 | Price service | CoinGecko, then Coinbase | Bitcoin price with a 60-second cache; never pays at a stale or invented price |
 | Web survey | Static page served by the API | Research survey that posts to the same API |
-| Hosting | Render (free tier) | API, survey and privacy page; sleeps when idle |
+| Hosting | Render (free tier) | API, survey, privacy and password-reset pages; sleeps when idle |
 | CI | GitHub Actions | Lint and tests on SQLite and Postgres, migration check, mobile typecheck, tests and bundle |
 
 The analytical components run inside the API process, on the request path.
@@ -47,7 +47,7 @@ as a single worker.
 ```
 main.py                  app assembly: config, middleware, lifespan, routers
 app/
-  routers/               13 modules, one per resource group
+  routers/               14 modules, one per resource group
   reward_engine.py       cashback arithmetic, levels, round-ups (no database access)
   anomaly_detector.py    Isolation Forest fraud scoring, per cardholder
   ml_forecast.py         30-day earnings forecast with an 80% interval
@@ -59,7 +59,7 @@ app/
   models.py, schemas.py  19 tables; request and response validation
 evaluation/              harness that evaluates all six components
 migrations/              Alembic schema history
-tests/                   243 backend tests
+tests/                   255 backend tests
 mobile/
   app/                   23 screens (file-based routes)
   components/, lib/      shared UI, design tokens, API client, 75 tests
@@ -136,6 +136,10 @@ Full method and results: [EVALUATION.md](EVALUATION.md).
 - Passwords hashed with bcrypt; sessions are HS256 JWTs with a purpose claim
   and a password fingerprint, so a password change signs out every device and
   a reset link works once.
+- Password reset by email, through Resend when it is configured: a one-time,
+  15-minute link to a reset page served by the API. The token travels in the
+  link's fragment, so it never reaches server logs, and the response is the
+  same whether or not the address has an account.
 - Optional TOTP two-factor authentication with backup codes.
 - Rate limits per address and, where guessing is the threat, per account.
 - Production refuses to start with a weak secret, demo mode or SQLite.

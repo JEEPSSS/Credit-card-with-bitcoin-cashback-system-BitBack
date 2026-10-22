@@ -51,6 +51,16 @@ class Settings(BaseSettings):
     # the contact route on the store listing.
     support_email: str | None = None
 
+    # Password-reset email, sent through Resend's HTTP API. All three must be
+    # set for email to go out: the API key, a sender on a domain verified in
+    # Resend (e.g. "BitBack <no-reply@example.com>"), and the public address of
+    # this server, which the emailed link points at. With any of them unset the
+    # forgot-password endpoint says plainly that emailed resets are unavailable
+    # rather than promising a message that will never arrive.
+    resend_api_key: str | None = None
+    email_from: str | None = None
+    public_base_url: str | None = None
+
     # Bonuses are paid on signup, so they are worth money and belong in config
     # rather than buried as literals in the registration handler.
     referrer_bonus_sats: int = Field(default=5_000, ge=0)
@@ -88,6 +98,14 @@ class Settings(BaseSettings):
             problems.append("DEMO_MODE must be false (it returns reset tokens to anyone)")
         if self.is_sqlite:
             problems.append("DATABASE_URL points at SQLite, which Render's disk does not keep")
+        email = [self.resend_api_key, self.email_from, self.public_base_url]
+        if any(email) and not all(email):
+            # Half a configuration fails silently at the first reset request,
+            # so it is caught here instead. None at all is allowed: the
+            # endpoint then says email is unavailable.
+            problems.append("RESEND_API_KEY, EMAIL_FROM and PUBLIC_BASE_URL must be set together")
+        elif self.public_base_url and not self.public_base_url.startswith("https://"):
+            problems.append("PUBLIC_BASE_URL must be https, since reset links carry a token")
         if problems:
             raise ValueError("Refusing to start with ENVIRONMENT=production: "
                              + "; ".join(problems))
@@ -96,6 +114,10 @@ class Settings(BaseSettings):
     @property
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite")
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.resend_api_key and self.email_from and self.public_base_url)
 
 
 @lru_cache

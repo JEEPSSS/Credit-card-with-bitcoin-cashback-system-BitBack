@@ -2,10 +2,10 @@ import json
 import secrets
 
 import pyotp
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app import anomaly_detector
+from app import anomaly_detector, mailer
 from app.auth import (
     create_access_token,
     decode_claims,
@@ -144,18 +144,36 @@ def delete_account(body: DeleteAccountRequest, user: User = Depends(get_current_
     return {"message": "Your account and its data have been deleted."}
 
 
-@router.post("/forgot-password")
-def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
-    rate_limit(f"forgot:{client_ip(request)}", 3)
-    user = db.query(User).filter(User.email == body.email.lower()).first()
-    response = {"message": "If that email has an account, a reset link is on its way."}
+RESET_MINUTES = 15
+RESET_SENT = "If that email has an account, a reset link is on its way. It works once, for 15 minutes."
+RESET_UNAVAILABLE = ("Password reset by email is not available on this server. "
+                     "Contact support to recover your account.")
 
-    # The response must not reveal whether the address is registered, so the
-    # token is only ever included in demo mode - where the absence of an email
-    # provider is the whole point. In any other configuration the shape is
-    # identical for both cases and the endpoint cannot enumerate accounts.
-    if user and settings.demo_mode:
-        response["reset_token"] = issue_token(user, "reset", minutes=15)
+
+@router.post("/forgot-password")
+def forgot_password(body: ForgotPasswordRequest, request: Request, background: BackgroundTasks,
+                    db: Session = Depends(get_db)):
+    rate_limit(f"forgot:{client_ip(request)}", 3)
+    email = body.email.lower()
+    # Per address as well as per caller, so nobody can flood one inbox with
+    # reset emails by rotating addresses. Applied to unknown addresses too, or
+    # the limit itself would reveal which ones are registered.
+    rate_limit(f"forgot-email:{email}", 3, window=3600)
+    user = db.query(User).filter(User.email == email).first()
+
+    # The response must not reveal whether the address is registered: the
+    # message depends only on the server's configuration, the email is sent
+    # after the response, and the token is only ever included in demo mode -
+    # where the absence of an email provider is the whole point. It used to
+    # promise a link in every configuration, though nothing was ever sent.
+    available = settings.email_enabled or settings.demo_mode
+    response = {"message": RESET_SENT if available else RESET_UNAVAILABLE}
+    if user:
+        token = issue_token(user, "reset", minutes=RESET_MINUTES)
+        if settings.email_enabled:
+            background.add_task(mailer.send_password_reset, user.email, token, RESET_MINUTES)
+        if settings.demo_mode:
+            response["reset_token"] = token
     return response
 
 

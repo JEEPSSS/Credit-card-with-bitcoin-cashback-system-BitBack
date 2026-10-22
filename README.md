@@ -59,7 +59,7 @@ build; in the APK, type it in or create your own account)
 **Tests**
 
 ```bash
-pytest                    # 241 backend tests, each on its own in-memory database
+pytest                    # 253 backend tests, each on its own in-memory database
 TEST_DATABASE_URL=postgresql://... pytest   # the same suite on Postgres (+2 race tests)
 ruff check app main.py seed_demo.py tests evaluation scripts
 cd mobile && npm test     # 75 front-end tests
@@ -85,7 +85,7 @@ app/
   services.py           wallet, referral and alert operations
   rate_limit.py         fixed-window limiter
   auth.py               JWT (PyJWT), bcrypt, TOTP helpers
-  routers/              13 modules, one per resource group (51 API operations in all)
+  routers/              14 modules, one per resource group (51 API operations in all)
   models.py schemas.py database.py btc_service.py
 main.py                 app assembly: config, middleware, lifespan, routers
 migrations/             Alembic; `alembic upgrade head`
@@ -187,9 +187,12 @@ insights screen. All six are evaluated, the rule engines included, in
 
 - No real Bitcoin transactions. Withdrawal addresses are stored but nothing is
   broadcast, and no private keys exist anywhere in the codebase.
-- No email delivery. `DEMO_MODE` returns the password-reset token in the API
-  response so the flow is demonstrable without a mail server; with it off the
-  endpoint reveals nothing about whether an address is registered.
+- No email other than password resets. With `RESEND_API_KEY`, `EMAIL_FROM`
+  and `PUBLIC_BASE_URL` set (DEPLOY.md), "Forgot password" emails a one-time
+  link to a reset page served by the API; without them it says emailed resets
+  are unavailable. `DEMO_MODE` also returns the token in the API response so
+  the flow can be shown without a mail account; with it off the endpoint
+  reveals nothing about whether an address is registered.
 - No evaluation on real data. Every result in docs/EVALUATION.md is measured
   against synthetic cardholders whose correct answers are known by
   construction, with separate validation and held-out seeds; real cardholders

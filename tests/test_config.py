@@ -37,3 +37,22 @@ def test_production_with_nothing_set_refuses_to_start(monkeypatch):
 
 def test_development_accepts_its_own_defaults():
     assert Settings(_env_file=None).demo_mode is True
+
+
+EMAIL = {"resend_api_key": "re_test", "email_from": "BitBack <no-reply@example.com>",
+         "public_base_url": "https://bitback.example"}
+
+
+def test_production_accepts_a_complete_email_configuration():
+    assert build(**EMAIL).email_enabled
+
+
+@pytest.mark.parametrize("missing", sorted(EMAIL))
+def test_production_refuses_half_an_email_configuration(missing):
+    with pytest.raises(ValidationError, match="must be set together"):
+        build(**{k: v for k, v in EMAIL.items() if k != missing})
+
+
+def test_production_refuses_reset_links_over_plain_http():
+    with pytest.raises(ValidationError, match="https"):
+        build(**{**EMAIL, "public_base_url": "http://bitback.example"})
