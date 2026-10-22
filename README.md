@@ -17,6 +17,8 @@ user's own transaction history. FastAPI backend, Expo (React Native) mobile app.
   `/api/health`). It runs on Render's free tier and sleeps when idle, so the
   first request can take up to a minute; the app shows "Waking up the
   server..." while it does.
+- **Project site:** https://jeepsss.github.io/Credit-card-with-bitcoin-cashback-system-BitBack/
+- **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **Research survey:** https://bitcoin-survey.onrender.com/survey/
 - **Privacy policy:** https://bitcoin-survey.onrender.com/privacy
 

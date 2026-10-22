@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BitBack: Credit Card with Bitcoin Cash Rebate</title>
+<meta name="description" content="A credit card prototype that pays cashback in bitcoin, with fraud detection, an earnings forecast and boost recommendations evaluated against baselines.">
+<style>
+  :root {
+    --bg: #ffffff; --surface: #f6f5f2; --ink: #16150f; --ink2: #52514e; --muted: #77756f;
+    --line: #e1e0d9; --accent: #c96f0a; --accent-ink: #ffffff; --link: #1f63b8;
+    --radius: 14px; --max: 1040px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121110; --surface: #1c1b19; --ink: #f2f0ec; --ink2: #c9c3bc; --muted: #97918b;
+      --line: #322f2d; --accent: #f7931a; --accent-ink: #1a1206; --link: #7db3f5;
+    }
+    .figure img { background: #ffffff; }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--link); }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 16px; }
+  header { padding: 56px 0 40px; border-bottom: 1px solid var(--line); }
+  .eyebrow { color: var(--muted); font-size: 14px; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 10px; }
+  h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.12; margin: 0 0 14px; letter-spacing: -.01em; }
+  .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--ink2); max-width: 760px; margin: 0 0 26px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 18px; border-radius: 999px; text-decoration: none; font-weight: 600; border: 1px solid var(--line); color: var(--ink); background: var(--surface); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  section { padding: 44px 0; border-bottom: 1px solid var(--line); }
+  h2 { font-size: clamp(23px, 3vw, 29px); margin: 0 0 12px; }
+  h3 { font-size: 18px; margin: 0 0 6px; }
+  p { margin: 0 0 14px; max-width: 760px; }
+  .muted { color: var(--muted); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 22px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .stat b { display: block; font-size: 26px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--ink2); font-size: 14px; }
+  .figure { margin: 18px 0 6px; }
+  .figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: var(--radius); }
+  .figure figcaption { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); margin-bottom: 8px; }
+  .card p { font-size: 15px; color: var(--ink2); margin: 0; }
+  .card .result { margin-top: 8px; color: var(--ink); font-weight: 600; font-size: 15px; }
+  ul.links { padding-left: 20px; margin: 0; }
+  ul.links li { margin: 6px 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; background: var(--surface); padding: 1px 5px; border-radius: 6px; border: 1px solid var(--line); }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <p class="eyebrow">Final Year Project · College of Computing and Data Science, NTU</p>
+    <h1>Credit Card with Bitcoin Cash Rebate System</h1>
+    <p class="lede">BitBack is a working prototype of a card that pays its cashback in bitcoin instead of points. It prices every reward at the live bitcoin price, watches each cardholder's spending for fraud, forecasts next month's earnings and recommends where to spend, and every one of those features is tested against simple baselines.</p>
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest">Android app (APK)</a>
+      <a class="btn" href="https://testflight.apple.com/join/Bg5kgsmC">iPhone beta (TestFlight)</a>
+      <a class="btn" href="https://share.descript.com/view/fM8RSKYqYXl">Demo video</a>
+      <a class="btn" href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack">Source code</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>51</b><span>API operations</span></div>
+      <div class="stat"><b>23</b><span>app screens</span></div>
+      <div class="stat"><b>6</b><span>models and rule engines, all evaluated</span></div>
+      <div class="stat"><b>318</b><span>automated tests</span></div>
+      <div class="stat"><b>0.887</b><span>fraud F1 on held-out data</span></div>
+    </div>
+  </div>
+</header>
+
+<main>
+<section>
+  <div class="wrap">
+    <h2>How it works</h2>
+    <p>A purchase earns sats (1 bitcoin = 100,000,000 sats) at the bitcoin price at that moment, scaled by the cardholder's level and any active boost. Six components then read the cardholder's own history to protect, forecast and advise.</p>
+    <figure class="figure"><img src="images/diagram-concept.png" alt="A card purchase passes through the reward engine into the wallet; two machine-learning models and four rule engines read the cardholder's history." loading="lazy"><figcaption>The idea in one picture. The example assumes a bitcoin price of $60,000.</figcaption></figure>
+    <figure class="figure"><img src="images/shots-earning.jpg" alt="Three phone screens: Home with the card and balance, the live reward preview, and the purchase result." loading="lazy"><figcaption>The earning loop in the Android app: Home, the live reward preview, and the result of a purchase.</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Architecture</h2>
+    <p>An Expo (React Native) app talks to a FastAPI backend over HTTPS. The backend keeps 19 tables in Postgres, fetches the bitcoin price from CoinGecko with Coinbase as a fallback, and runs the analytical components in-process. The full write-up is in <a href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/blob/main/docs/ARCHITECTURE.md">ARCHITECTURE.md</a>.</p>
+    <figure class="figure"><img src="images/diagram-architecture.png" alt="System architecture: mobile app, over-the-air updates and web survey above a FastAPI application with routers and domain modules, over the database and the bitcoin price service." loading="lazy"><figcaption>Components and how they connect.</figcaption></figure>
+    <div class="grid2">
+      <figure class="figure"><img src="images/diagram-purchase-sequence.png" alt="Sequence of a purchase from the app through the router, price service, reward engine and database." loading="lazy"><figcaption>A purchase, step by step. A retried request with the same key is never paid twice.</figcaption></figure>
+      <figure class="figure"><img src="images/diagram-price.png" alt="Flowchart of when a reward may be paid: live price, two providers, decline in production if the price is stale." loading="lazy"><figcaption>Rewards are never paid at a stale or invented bitcoin price.</figcaption></figure>
+    </div>
+    <figure class="figure"><img src="images/diagram-data-model.png" alt="Simplified data model: users with purchases, money and progress, and account tables." loading="lazy"><figcaption>The data model: 19 tables, with sats stored as whole numbers.</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Models and rule engines</h2>
+    <p>Two components learn from data and four follow fixed rules. All six were evaluated on synthetic cardholders whose correct answers are known, against simple baselines, with changes chosen on validation data and confirmed on separate held-out data.</p>
+    <div class="cards">
+      <div class="card"><span class="tag">Machine learning</span><h3>Fraud detection</h3><p>An Isolation Forest per cardholder, with plain-language reasons for every flag.</p><p class="result">F1 0.887 on 30 held-out seeds; beats the rule baseline on all 30.</p></div>
+      <div class="card"><span class="tag">Statistical model</span><h3>Earnings forecast</h3><p>Next 30 days of sats with an 80% likely range.</p><p class="result">About 15% more accurate than "same as last month" for steady or rising spending.</p></div>
+      <div class="card"><span class="tag">Rule engine</span><h3>Boost recommender</h3><p>Ranks categories by what a 2× boost would actually earn.</p><p class="result">Picks the best category 70% of the time, up from 61%.</p></div>
+      <div class="card"><span class="tag">Rule engine</span><h3>Spending persona</h3><p>Matches spending to five profiles, shown after 20 purchases.</p><p class="result">75.5% right, with honest confidence.</p></div>
+      <div class="card"><span class="tag">Rule engine</span><h3>Reward engine</h3><p>Category rate × level × boost, in whole sats.</p><p class="result">0 errors in 200,000 random purchases.</p></div>
+      <div class="card"><span class="tag">Rule engine</span><h3>Gamification</h3><p>Levels, ten badges and a daily streak.</p><p class="result">Every badge reachable; difficulty measured by activity level.</p></div>
+    </div>
+    <div class="grid2">
+      <figure class="figure"><img src="images/chart-fraud-heldout.png" alt="Bar chart: precision, recall and F1 for the shipped detector, the previous detector and the rule baseline." loading="lazy"><figcaption>Fraud detection on 30 held-out seeds, with 95% confidence intervals.</figcaption></figure>
+      <figure class="figure"><img src="images/chart-before-after.png" alt="Before-and-after chart of each change the evaluation led to." loading="lazy"><figcaption>What the evaluation changed, measured before and after.</figcaption></figure>
+    </div>
+    <p class="muted">Full method, results and limitations: <a href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/blob/main/docs/EVALUATION.md">EVALUATION.md</a>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Quality and security</h2>
+    <p>The backend was hardened against its production database (31 findings, including two ways a purchase could pay twice), and the app was audited against WCAG 2.2, Nielsen's heuristics and OWASP MASVS, then tested over eight rounds on a device.</p>
+    <figure class="figure"><img src="images/shots-fraud.jpg" alt="Three phone screens: fraud protection score, reasons for a flagged purchase in plain words, and how the detector works." loading="lazy"><figcaption>Fraud protection explains each flag in plain words and states the detector's measured accuracy.</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Try it</h2>
+    <ul class="links">
+      <li><b>Android:</b> download the APK from the <a href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest">latest release</a>.</li>
+      <li><b>iPhone:</b> install TestFlight, then open the <a href="https://testflight.apple.com/join/Bg5kgsmC">BitBack invitation</a>.</li>
+      <li><b>Demo account:</b> sign-in details are in the <a href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack#readme">README</a>; or create your own account.</li>
+      <li><b>Live API:</b> <a href="https://bitcoin-survey.onrender.com/api/health">health check</a> and <a href="https://bitcoin-survey.onrender.com/docs">interactive documentation</a>. The free server sleeps when idle, so the first request can take up to a minute.</li>
+      <li><b>Research survey:</b> <a href="https://bitcoin-survey.onrender.com/survey/">bitcoin-survey.onrender.com/survey</a></li>
+      <li><b>Privacy policy:</b> <a href="https://bitcoin-survey.onrender.com/privacy">bitcoin-survey.onrender.com/privacy</a></li>
+    </ul>
+    <p class="muted" style="margin-top:16px">Purchases and bitcoin are simulated: no real money or bitcoin is ever moved.</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">Kalaiselvan Sanjeev · Supervisor: Dr Chloe Gu · Nanyang Technological University, 2026/2027</div>
+</footer>
+</body>
+</html>
