@@ -12,6 +12,7 @@ import {
 import type { Transaction } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { refreshError } from "@/lib/screenState";
+import { Beam } from "@/components/Beam";
 import { Odometer } from "@/components/Odometer";
 import { PaymentCard } from "@/components/PaymentCard";
 import { ReceiptRow } from "@/components/ReceiptRow";
@@ -151,15 +152,17 @@ export default function Home() {
               </Card>
 
               {summary.active_boost && (
-                <Card tone="accent" style={{ marginBottom: space.lg }}>
-                  <View style={styles.cardHeadLeft}>
-                    <Flame size={iconSize.sm} color={COLORS.primary} />
-                    <Text style={styles.cardTitle}>{summary.active_boost.category} boost active</Text>
-                  </View>
-                  <Text style={styles.cardBody}>
-                    Earning {summary.active_boost.multiplier}x in this category.
-                  </Text>
-                </Card>
+                <Beam style={{ marginBottom: space.lg }}>
+                  <Card tone="accent">
+                    <View style={styles.cardHeadLeft}>
+                      <Flame size={iconSize.sm} color={COLORS.primary} />
+                      <Text style={styles.cardTitle}>{summary.active_boost.category} boost active</Text>
+                    </View>
+                    <Text style={styles.cardBody}>
+                      Earning {summary.active_boost.multiplier}x in this category.
+                    </Text>
+                  </Card>
+                </Beam>
               )}
 
               <View style={styles.sectionHead}>

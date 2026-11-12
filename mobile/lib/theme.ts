@@ -113,14 +113,41 @@ export const CATEGORY_COLOR = {
  * Real cards signal tier through material, so these are named after metals and
  * run cool as they climb — bronze warm, platinum and diamond cold. That gives
  * the progression a direction the eye reads without a label.
+ *
+ * `rim` is the palette swept around the card's edge by the Metal shader
+ * (components/reacticx/metal). Six stops, shadow to highlight and back, built
+ * around the tier's own `edge` colour so the rim is the same metal as the
+ * face. The darkest stops are kept well clear of the face colour: a stop as
+ * dark as the card reads as a gap in the rim.
  */
 export const TIER = {
-  bronze: { face: '#3A2A1C', edge: '#B0703C', ink: '#F0E4D8' },
-  silver: { face: '#2B2D30', edge: '#9AA0A6', ink: '#EDEFF2' },
-  gold: { face: '#3A2E14', edge: '#D9A63C', ink: '#F6EEDA' },
-  platinum: { face: '#33353A', edge: '#E2E4E8', ink: '#FFFFFF' },
-  diamond: { face: '#1B3138', edge: '#A8DCEA', ink: '#EAF8FC' },
+  bronze: {
+    face: '#3A2A1C', edge: '#B0703C', ink: '#F0E4D8',
+    rim: ['#6E4322', '#B0703C', '#FFD9C0', '#8E5229', '#F2D6BE', '#734726'],
+  },
+  silver: {
+    face: '#2B2D30', edge: '#9AA0A6', ink: '#EDEFF2',
+    rim: ['#5C626A', '#9AA0A6', '#FFFFFF', '#7F878F', '#E6EAEE', '#626870'],
+  },
+  gold: {
+    face: '#3A2E14', edge: '#D9A63C', ink: '#F6EEDA',
+    rim: ['#7A5C1C', '#D9A63C', '#FFF6D0', '#B98A2E', '#FFFBE8', '#80611F'],
+  },
+  platinum: {
+    face: '#33353A', edge: '#E2E4E8', ink: '#FFFFFF',
+    rim: ['#6A6E76', '#E2E4E8', '#FFFFFF', '#A9ADB5', '#F6F7F9', '#70747C'],
+  },
+  diamond: {
+    face: '#1B3138', edge: '#A8DCEA', ink: '#EAF8FC',
+    rim: ['#2F5F6C', '#A8DCEA', '#FFFFFF', '#6FB9CF', '#EAF8FC', '#346572'],
+  },
 } as const;
+
+/**
+ * The beam that travels round the active-boost card: the accent, a lighter
+ * tint of it at the head, and the accent again so the loop has no seam.
+ */
+export const BEAM = ['#F7931A', '#FFD08A', '#F7931A'] as const;
 
 export type TierKey = keyof typeof TIER;
 
@@ -250,6 +277,14 @@ export const iconSize = {
  * distance travelled: a colour swap is `fast`, a sheet crossing the screen is
  * `slow`. The odometer is the one deliberate exception, long enough to be
  * legible as a count rather than a flicker.
+ *
+ * Two things move without a state change, and both are material, not
+ * choreography. The card's metal rim drifts the way a reflection moves on a
+ * card held in the hand (`rimSpeed`, a quarter of the shader's default), and
+ * a beam circles the active-boost card for as long as the boost is running
+ * (`beamSeconds` a lap), so the motion itself says "this is on". Neither
+ * moves content, both stop with the OS reduce-motion setting, and the rim
+ * stops while the app is in the background.
  */
 export const motion = {
   fast: 100,
@@ -258,6 +293,8 @@ export const motion = {
   odometer: 650,
   odometerStagger: 45,
   shimmer: 1400,
+  rimSpeed: 0.25,
+  beamSeconds: 7,
 } as const;
 
 /**
