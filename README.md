@@ -10,6 +10,11 @@ user's own transaction history. FastAPI backend, Expo (React Native) mobile app.
 - **Android app:** download the APK from the
   [latest release](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest)
   and open it on an Android phone (allow "install unknown apps" when asked).
+  The current build is
+  [preview 3](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/tag/v1.0.0-preview.3):
+  a metal rim on the payment card in the metal of your tier, a beam round the
+  active boost, and a tab bar with a sliding pill. It installs over an earlier
+  preview and keeps your sign-in.
 - **iPhone beta:** install [TestFlight](https://apps.apple.com/app/testflight/id899247664),
   then open the [BitBack TestFlight invitation](https://testflight.apple.com/join/Bg5kgsmC)
   on your iPhone. Tap **Accept**, then **Install** to download BitBack.
