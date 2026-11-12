@@ -5,8 +5,10 @@ import Svg, {
 } from "react-native-svg";
 
 import {
-  CARD_ASPECT, CARD_CORNER_RATIO, COLORS, font, fontSize, radius, space, tierOf, tracking,
+  CARD_ASPECT, CARD_CORNER_RATIO, COLORS, font, fontSize, motion, radius, space, tierOf, tracking,
 } from "@/lib/theme";
+import { useReducedMotion } from "@/lib/useReducedMotion";
+import { Metal } from "@/components/reacticx/metal";
 
 /**
  * The payment card.
@@ -34,6 +36,14 @@ import {
  *    light falls across a matte plastic card. Not a two-hue gradient, not a
  *    glow, not a blur panel. Those are the three things that make a UI card
  *    read as generated rather than designed.
+ *
+ * 4. The edge is metal. Premium cards are cut from it or edged with it, and
+ *    the tiers are named after metals, so the rim is drawn by a shader as a
+ *    rolled, reflective wire in the tier's own metal (Reacticx's Metal, MIT;
+ *    see components/reacticx). The reflection drifts slowly, as it does on a
+ *    card held in the hand. The glow the component offers is switched off:
+ *    the rim should look like an object, not a light source. With the OS
+ *    reduce-motion setting on, the rim is drawn but holds still.
  *
  * The tier finish is a real product mechanic, not decoration: it is keyed to
  * the reward level the user has actually reached, so the card visibly changes
@@ -99,8 +109,25 @@ export const PaymentCard = memo(function PaymentCard({
   const height = width / CARD_ASPECT;
   const corner = height * CARD_CORNER_RATIO;
   const tier = tierOf(levelKey);
+  const reduced = useReducedMotion();
 
   return (
+    <Metal
+      colors={tier.rim}
+      borderWidth={RIM.width}
+      borderRadius={corner}
+      glow={0}
+      sheen={RIM.sheen}
+      bands={RIM.bands}
+      sharpness={RIM.sharpness}
+      distortion={RIM.distortion}
+      refraction={RIM.refraction}
+      bevel={RIM.bevel}
+      contrast={1}
+      speed={motion.rimSpeed}
+      paused={reduced}
+      style={{ width, height }}
+    >
     <View
       accessible
       accessibilityRole="image"
@@ -123,17 +150,6 @@ export const PaymentCard = memo(function PaymentCard({
         </Defs>
         <Rect width={width} height={height} rx={corner} fill="url(#face)" />
         <Rect width={width} height={height} rx={corner} fill="url(#sheen)" />
-        <Rect
-          x={0.75}
-          y={0.75}
-          width={width - 1.5}
-          height={height - 1.5}
-          rx={corner}
-          fill="none"
-          stroke={tier.edge}
-          strokeOpacity={0.28}
-          strokeWidth={1.5}
-        />
       </Svg>
 
       <View style={styles.inner}>
@@ -166,8 +182,31 @@ export const PaymentCard = memo(function PaymentCard({
         </View>
       </View>
     </View>
+    </Metal>
   );
 });
+
+/**
+ * How the rim is drawn. The component's defaults are tuned for a thick,
+ * glowing border round a button; on a card edge they gave a doubled line
+ * that wobbled, like a pencil outline. These were chosen by rendering the
+ * shader at card size, at several moments of its drift:
+ *
+ * - 3pt is the thinnest rim that still shows a rolled cross-section.
+ * - One band, so the highlights are long sweeps rather than dashes.
+ * - No refraction across the wall. That term lays the palette across the
+ *   rim's width as well as along it, and on 3pt that is the doubled line.
+ * - The noise that warps the bands is turned down until the edge is straight.
+ */
+const RIM = {
+  width: 3,
+  bands: 1,
+  sharpness: 1.4,
+  distortion: 0.15,
+  refraction: 0,
+  bevel: 0.45,
+  sheen: 0.3,
+} as const;
 
 /**
  * The card is drawn at the ID-1 proportions of a real card, so its height is

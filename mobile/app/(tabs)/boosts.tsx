@@ -6,6 +6,7 @@ import { useAction, useApi } from "@/lib/useApi";
 import { refreshError } from "@/lib/screenState";
 import type { BoostOption } from "@/lib/types";
 import { Button, Card, COLORS, ErrorNote, Header, InlineError, Label, Loading, Num, Screen } from "@/components/ui";
+import { Beam } from "@/components/Beam";
 import { Flame, Sparkles, iconNamed } from "@/components/icons";
 import { CATEGORY_ICON, font, fontSize, iconSize, longestWordWidth, space, wordFitBasis } from "@/lib/theme";
 
@@ -50,17 +51,19 @@ export default function Boosts() {
       <Header title="Boosts" subtitle="Double the cashback in one category for 30 days. One boost at a time." />
 
       {boosts.active && (
-        <Card style={{ marginBottom: 16, borderColor: COLORS.accentBorder }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Flame size={iconSize.sm} color={COLORS.primary} />
-            <Text style={{ color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium }}>
-              {titleCase(boosts.active.category)} at {boosts.active.multiplier}x
+        <Beam style={{ marginBottom: 16 }}>
+          <Card tone="accent">
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Flame size={iconSize.sm} color={COLORS.primary} />
+              <Text style={{ color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium }}>
+                {titleCase(boosts.active.category)} at {boosts.active.multiplier}x
+              </Text>
+            </View>
+            <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 8 }}>
+              {boosts.active.days_remaining} days remaining. Activating another replaces it.
             </Text>
-          </View>
-          <Text style={{ color: COLORS.muted, fontSize: fontSize.caption, marginTop: 8 }}>
-            {boosts.active.days_remaining} days remaining. Activating another replaces it.
-          </Text>
-        </Card>
+          </Card>
+        </Beam>
       )}
 
       {pick && (
