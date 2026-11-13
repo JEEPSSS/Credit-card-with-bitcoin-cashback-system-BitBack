@@ -63,8 +63,12 @@ else — new screens, the survey logic, anything in your own JS/TSX code —
 push it straight to everyone who already has the app:
 
 ```
-npx eas-cli update --branch preview --message "describe what changed"
+EXPO_PUBLIC_API_URL=https://bitcoin-survey.onrender.com npx eas-cli update --branch preview --message "describe what changed"
 ```
+
+Always set `EXPO_PUBLIC_API_URL` on that command. `eas update` does not read
+the `env` block in `eas.json`, which applies only to builds, so without it the
+update is compiled to call `localhost` and sign-in fails on every phone.
 
 The app checks for updates automatically; testers don't have to do
 anything for it to arrive.
@@ -86,8 +90,10 @@ npx eas-cli fingerprint:compare --build-id <iOS build ID>
 If it reports that the fingerprints match, publish:
 
 ```
-npx eas-cli update --branch production --platform ios --message "describe what changed"
+EXPO_PUBLIC_API_URL=https://bitcoin-survey.onrender.com npx eas-cli update --branch production --platform ios --message "describe what changed"
 ```
+
+As for Android, the API address must be set on the command line.
 
 On the iPhone, open BitBack, close it fully, and open it again: the app
 downloads the update on the first start and runs it from the next. The build
