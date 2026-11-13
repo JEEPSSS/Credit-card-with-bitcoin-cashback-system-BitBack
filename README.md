@@ -1,33 +1,46 @@
 # BitBack — bitcoin cashback card
 
+[![CI](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/actions/workflows/ci.yml/badge.svg)](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack?include_prereleases&label=Android%20APK)](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest)
+[![iPhone beta](https://img.shields.io/badge/iPhone-TestFlight-0D96F6)](https://testflight.apple.com/join/Bg5kgsmC)
+[![Project site](https://img.shields.io/badge/site-GitHub%20Pages-222)](https://jeepsss.github.io/Credit-card-with-bitcoin-cashback-system-BitBack/)
+
 A card that pays cashback in satoshis instead of points, with two machine-learning
 models (fraud detection, earnings forecast) and four rule engines (boost
 recommender, spending persona, reward engine, gamification) running on the
 user's own transaction history. FastAPI backend, Expo (React Native) mobile app.
+Final Year Project, College of Computing and Data Science, NTU.
 
-## Try it
+![Four phone screens from the current app: Home with the balance and recent activity, the Card tab, Wallet with sats earned per period, and a transaction receipt.](docs/images/shots-app.jpg)
 
-- **Android app:** download the APK from the
-  [latest release](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest)
-  and open it on an Android phone (allow "install unknown apps" when asked).
-  The current build is
-  [preview 4](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/tag/v1.0.0-preview.4):
-  a redesigned Home, a Card tab, a floating dock for the tab bar, Wallet
-  charts with range chips, and a receipt for every transaction. It installs
-  over an earlier preview and keeps your sign-in.
-- **iPhone beta:** install [TestFlight](https://apps.apple.com/app/testflight/id899247664),
-  then open the [BitBack TestFlight invitation](https://testflight.apple.com/join/Bg5kgsmC)
-  on your iPhone. Tap **Accept**, then **Install** to download BitBack. Changes to the app's
-  own code reach it as over-the-air updates; open the app twice to pick one up.
-- **Live API:** https://bitcoin-survey.onrender.com (health check at
-  `/api/health`). It runs on Render's free tier and sleeps when idle, so the
-  first request can take up to a minute; the app shows "Waking up the
-  server..." while it does.
+<sub>The current app (preview 4) with the demo account: Home, the Card tab, Wallet and a transaction receipt.</sub>
+
+## Get the app
+
+| | How | Current version |
+|---|---|---|
+| **Android** | [Download bitback.apk](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest/download/bitback.apk) on the phone and open it (allow "install unknown apps" when asked). It installs over an earlier preview and keeps your sign-in. | [Preview 4](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/tag/v1.0.0-preview.4) |
+| **iPhone** | Install [TestFlight](https://apps.apple.com/app/testflight/id899247664), open the [BitBack invitation](https://testflight.apple.com/join/Bg5kgsmC), tap **Accept**, then **Install**. Updates arrive over the air: open the app, close it, open it again. | Same code as preview 4 |
+
+**Demo account:** `demo@bitback.app` / `demo12345`, or create your own.
+Purchases and bitcoin are simulated: no real money or bitcoin is ever moved.
+
+Preview 4 brings a redesigned Home, a Card tab, a floating dock for the tab
+bar, Wallet charts with range chips, and a receipt for every transaction.
+
+## Links
+
 - **Project site:** https://jeepsss.github.io/Credit-card-with-bitcoin-cashback-system-BitBack/
-- **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- **Architecture review:** [findings and verification evidence](docs/ARCHITECTURE_REVIEW.md)
-  from the 23 October 2026 scan. The fraud-cache refresh and offline-startup
-  findings are recorded as open; this documentation update does not fix them.
+- **Live API:** https://bitcoin-survey.onrender.com ([health check](https://bitcoin-survey.onrender.com/api/health),
+  [interactive docs](https://bitcoin-survey.onrender.com/docs)). It runs on
+  Render's free tier and sleeps when idle, so the first request can take up to
+  a minute; the app shows "Waking up the server..." while it does.
+- **Documentation:** [architecture](docs/ARCHITECTURE.md) ·
+  [architecture review](docs/ARCHITECTURE_REVIEW.md) ·
+  [evaluation](docs/EVALUATION.md) ·
+  [backend hardening](docs/BACKEND_HARDENING.md) ·
+  [app audit](docs/APP_AUDIT.md) ·
+  [shipping updates to phones](mobile/LAUNCH.md)
 - **Research survey:** https://bitcoin-survey.onrender.com/survey/
 - **Privacy policy:** https://bitcoin-survey.onrender.com/privacy
 
@@ -60,7 +73,7 @@ Expo is already serving on, so no configuration is needed on the same network.
 Override with `EXPO_PUBLIC_API_URL` to point at a deployed backend.
 
 Demo login: `demo@bitback.app` / `demo12345` (filled in automatically only in a development
-build; in the APK, type it in or create your own account)
+build; in the installed app, type it in or create your own account)
 
 **Tests**
 
@@ -68,7 +81,7 @@ build; in the APK, type it in or create your own account)
 pytest                    # 253 backend tests, each on its own in-memory database
 TEST_DATABASE_URL=postgresql://... pytest   # the same suite on Postgres (+2 race tests)
 ruff check app main.py seed_demo.py tests evaluation scripts
-cd mobile && npm test     # 75 front-end tests
+cd mobile && npm test     # 91 front-end tests
 ```
 
 How the backend was hardened for production, with evidence for each finding:
