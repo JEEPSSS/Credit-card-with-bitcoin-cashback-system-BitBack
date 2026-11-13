@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { sectionTitle, timeOfDay, toSections } from "./statement";
+import { daySections, sectionTitle, timeOfDay, toSections } from "./statement";
 import type { Transaction } from "./types";
 
 // Noon on 15 March in Singapore, where the suite runs (see vitest.config.ts).
@@ -124,5 +124,27 @@ describe("timeOfDay", () => {
   it("shows the purchase from the demo recording at the time it was made", () => {
     // Listed at 6:50 AM before the fix, for a purchase made at 2:50 PM.
     expect(timeOfDay("2026-10-19T06:50:00")).toMatch(/^2:50\s?PM$/);
+  });
+});
+
+describe("daySections", () => {
+  const item = (id: number, created_at: string) => ({ id, created_at });
+
+  it("groups by the local day, newest day and newest item first", () => {
+    const sections = daySections(
+      [item(1, "2026-03-13T02:00:00"), item(2, "2026-03-15T01:00:00"), item(3, "2026-03-15T03:00:00")],
+      NOW,
+    );
+    expect(sections.map((s) => s.title)).toEqual(["Today", "Friday"]);
+    expect(sections[0].data.map((i) => i.id)).toEqual([3, 2]);
+  });
+
+  it("puts a UTC timestamp from late last night under today in Singapore", () => {
+    // 17:00 UTC on the 14th is 01:00 on the 15th in Singapore.
+    expect(daySections([item(1, "2026-03-14T17:00:00")], NOW)[0].title).toBe("Today");
+  });
+
+  it("returns nothing for nothing", () => {
+    expect(daySections([], NOW)).toEqual([]);
   });
 });

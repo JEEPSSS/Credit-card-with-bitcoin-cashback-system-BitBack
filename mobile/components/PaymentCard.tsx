@@ -53,7 +53,7 @@ import { Metal } from "@/components/reacticx/metal";
 const PAN_MASK = "••••";
 
 /** Deterministic last four, so a given account always shows the same card. */
-function lastFour(seed: number): string {
+export function lastFour(seed: number): string {
   const n = ((seed * 7919 + 104729) % 9000) + 1000;
   return String(n);
 }

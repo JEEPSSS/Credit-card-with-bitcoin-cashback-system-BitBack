@@ -1,49 +1,59 @@
-import { ComponentProps, useCallback } from "react";
-import { StyleSheet, View } from "react-native";
+import { ComponentProps, useCallback, useEffect, useState } from "react";
+import { Keyboard, Platform, StyleSheet, View } from "react-native";
 import { Tabs } from "expo-router";
 import * as Haptics from "expo-haptics";
 
-import { COLORS, MIN_TOUCH_TARGET, TAB_LABEL_MAX_FONT_SCALE, font, iconSize, space } from "@/lib/theme";
+import { COLORS, DOCK_HEIGHT, DOCK_MARGIN, iconSize, space } from "@/lib/theme";
 import { MaskedTabBar } from "@/components/reacticx/masked-tab-bar";
 
 /**
- * The tab bar.
+ * The tab bar: a dock that floats over the screen.
  *
- * It was the platform default: five icons on a hairline, the active one
- * orange. Correct, and identical to every other app built on the same kit.
- * This one is a single track with a pill that slides to the active tab, and
- * the tab's icon and label change colour only where the pill is over them,
- * so the selection reads as one object moving rather than two colours
- * swapping. The pill can also be dragged across the tabs. It is Reacticx's
- * MaskedTabBar (MIT; see components/reacticx), drawn with the app's own
- * colours.
+ * It is a dark, fully rounded bar inset from the screen edges, with the active
+ * tab marked by a solid accent pill that slides between tabs and can be
+ * dragged (Reacticx's MaskedTabBar, MIT; see components/reacticx). Floating
+ * rather than docked to the bottom edge is what lets Home's light sheet run
+ * underneath it, and it is how the banking apps this layout is drawn from
+ * place theirs.
  *
- * The pill is the accent's soft fill with the accent as ink, the same pair
- * every selected chip in the app uses. A solid orange pill was tried and
- * rejected: it competed with the one solid orange button a screen is allowed.
+ * Icons only. Five labelled tabs do not fit a dock this narrow on a 360dp
+ * phone, and the earlier bar had already shrunk its labels to 11pt to fit.
+ * Each tab still carries its title as its spoken name, so a screen reader
+ * announces "Home, tab, selected" exactly as before.
  *
- * Icon over label, not beside it: five tabs share a phone's width, and side
- * by side "Transact" does not fit a 360dp screen.
+ * The accent pill was held back in the first version of this bar because it
+ * competed with the screen's one solid orange button. It no longer does: the
+ * dock now sits apart from the content, over the sheet or the canvas, and the
+ * pill is the only thing on it.
  */
 
 /** What Expo Router hands a custom tab bar, taken from its own `Tabs`. */
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>>[0];
 
-/**
- * Label size. Smaller than the caption the old bar used, because a tab is now
- * a fifth of the pill rather than a fifth of the screen: at 13 "Transact" was
- * cut short on a 360dp phone once text was set to 130%. iOS sets its own tab
- * labels at 10pt, so 11 is not small for the job, and it still grows with the
- * system text size up to TAB_LABEL_MAX_FONT_SCALE.
- */
-const LABEL_SIZE = 11;
+const DOCK_PADDING = space.xs;
 
-/** Tall enough for an icon over a label with a 48dp touch target inside. */
-const BAR_HEIGHT = MIN_TOUCH_TARGET + space.md;
-const BAR_PADDING = space.xs;
+/**
+ * The dock covers whatever is behind it, so it steps aside while the keyboard
+ * is up; otherwise on Android it rides up over the field being typed in.
+ */
+function useKeyboardOpen(): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvent, () => setOpen(true));
+    const hide = Keyboard.addListener(hideEvent, () => setOpen(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return open;
+}
 
 export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) {
   const active = state.routes[state.index]?.name ?? "";
+  const keyboardOpen = useKeyboardOpen();
 
   const select = useCallback(
     (name: string) => {
@@ -57,20 +67,23 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
     [state.routes, navigation],
   );
 
+  if (keyboardOpen) return null;
+
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.wrap, { bottom: Math.max(insets.bottom, DOCK_MARGIN) }]}
+    >
       <MaskedTabBar
         value={active}
         onValueChange={select}
         palette={PALETTE}
-        height={BAR_HEIGHT}
-        radius={BAR_HEIGHT / 2}
-        padding={BAR_PADDING}
+        height={DOCK_HEIGHT}
+        radius={DOCK_HEIGHT / 2}
+        padding={DOCK_PADDING}
         gap={0}
-        iconSize={iconSize.lg}
-        fontSize={LABEL_SIZE}
-        fontWeight="400"
-        style={styles.track}
+        iconSize={iconSize.lg + 1}
+        style={styles.dock}
       >
         <MaskedTabBar.List>
           {state.routes.map((route) => {
@@ -88,9 +101,6 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
                     options.tabBarIcon?.({ focused, color, size }) ?? null
                   }
                 </MaskedTabBar.Icon>
-                <MaskedTabBar.Label maxFontSizeMultiplier={TAB_LABEL_MAX_FONT_SCALE} style={styles.label}>
-                  {title}
-                </MaskedTabBar.Label>
               </MaskedTabBar.Trigger>
             );
           })}
@@ -102,18 +112,13 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
 
 const PALETTE = {
   track: COLORS.surface,
-  pill: COLORS.accentSurface,
-  inactive: COLORS.muted,
-  active: COLORS.primary,
+  pill: COLORS.primary,
+  inactive: COLORS.muted,   // 5.9:1 on the track
+  active: COLORS.onPrimary, // 8.1:1 on the pill
 } as const;
 
 const styles = StyleSheet.create({
-  wrap: {
-    backgroundColor: COLORS.bg,
-    paddingHorizontal: space.lg,
-    paddingTop: space.sm,
-  },
-  track: { borderWidth: 1, borderColor: COLORS.border },
-  tab: { flexDirection: "column", gap: 2, paddingHorizontal: 0 },
-  label: { fontFamily: font.regular },
+  wrap: { position: "absolute", left: space.xl, right: space.xl },
+  dock: { borderWidth: 1, borderColor: COLORS.border },
+  tab: { paddingHorizontal: 0 },
 });

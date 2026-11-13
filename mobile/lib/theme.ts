@@ -65,10 +65,34 @@ const semantic = {
   dangerEdge: '#4A2020',
 } as const;
 
+/**
+ * Paper. The one light surface in the app: the sheet that carries recent
+ * activity on Home.
+ *
+ * A dark interface separates things by 3-5% steps of luminance, which is quiet
+ * by design and is also why the app read as flat. One light sheet against the
+ * dark ground is the strongest contrast available without adding a colour, and
+ * putting the statement on it borrows a real association: a statement is
+ * paper. It is used once, so it stays an event.
+ *
+ * Warm like the neutral ramp, for the same reason. The orange accent is too
+ * light to read on white (2.2:1), so sats on paper are set in `inkAccent`, the
+ * accent darkened until it clears 4.5:1.
+ */
+const paper = {
+  paper: '#F6F4F0',      // the sheet
+  paperCard: '#FFFFFF',  // rows on the sheet
+  paperEdge: '#E9E5DE',  // row edges - decorative
+  ink: '#17130E',        // primary text - 16.8:1 on paper
+  inkMuted: '#6B645B',   // secondary text - 5.3:1 on paper, 5.8:1 on a row
+  inkAccent: '#A85800',  // sats earned - 5.2:1 on a row
+} as const;
+
 export const color = {
   ...ramp,
   ...accent,
   ...semantic,
+  ...paper,
 
   // Legacy aliases kept so call sites read naturally.
   bg: ramp.canvas,
@@ -216,12 +240,19 @@ export const space = {
 } as const;
 
 /**
- * Three radii. Controls, cards, and the payment card itself — the last is
- * fixed by the physical spec below rather than chosen.
+ * Radii, one per kind of object. Controls, the rows and tiles inside a card,
+ * cards, the sheet, and the payment card itself — the last is fixed by the
+ * physical spec below rather than chosen.
+ *
+ * Cards went from 12 to 18 and controls from 8 to 12 with the Home redesign:
+ * the banking apps the layout is drawn from round their cards at about a tenth
+ * of their height, and at 12 these read as boxes next to the new pill buttons.
  */
 export const radius = {
-  control: 8,
-  card: 12,
+  control: 12,
+  tile: 16,
+  card: 18,
+  sheet: 28,
   payment: 14,
   pill: 999,
 } as const;
@@ -231,6 +262,15 @@ export const radius = {
  * Taking the larger satisfies both platforms with one number.
  */
 export const MIN_TOUCH_TARGET = 48;
+
+/**
+ * The tab bar is a dock that floats over the screen rather than a strip under
+ * it, so it can sit on Home's light sheet. Screens inside the tabs leave this
+ * much room at the bottom, plus the device's own inset, so their last row is
+ * not left underneath it.
+ */
+export const DOCK_HEIGHT = 64;
+export const DOCK_MARGIN = 16;
 
 /** Secondary controls inside a row are drawn at 40 to keep rows compact. */
 export const MIN_CONTROL_HEIGHT = 40;

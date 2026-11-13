@@ -1,197 +1,243 @@
 import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
-import { ArrowUpRight, Bell, Flame, Sparkles, TrendingDown, TrendingUp } from "@/components/icons";
-
-import { aiAPI, miscAPI, rewardsAPI, transactionAPI, walletAPI } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
-import { sats, usd } from "@/lib/format";
 import {
-  COLORS, LEVEL_NAME_WIDTH, font, fontSize, iconSize, longestWordWidth, radius, space, wordFitBasis,
+  ArrowUpRight, Bell, Coins, Flame, LayoutGrid, Sparkles, Target, TrendingDown, TrendingUp, Wallet,
+} from "@/components/icons";
+import type { LucideIcon } from "@/components/icons";
+
+import { miscAPI, rewardsAPI, transactionAPI, walletAPI } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { titleCase, usd } from "@/lib/format";
+import {
+  COLORS, MAX_DISPLAY_FONT_SCALE, MIN_TOUCH_TARGET, font, fontSize, iconSize, longestWordWidth,
+  radius, space, wordFitBasis,
 } from "@/lib/theme";
-import type { Transaction } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { refreshError } from "@/lib/screenState";
+import { Avatar } from "@/components/Avatar";
 import { Beam } from "@/components/Beam";
+import { CardPeek, PEEK_HEIGHT, PEEK_VISIBLE } from "@/components/CardPeek";
 import { Odometer } from "@/components/Odometer";
-import { PaymentCard } from "@/components/PaymentCard";
-import { ReceiptRow } from "@/components/ReceiptRow";
+import { lastFour } from "@/components/PaymentCard";
+import { ReceiptRow, toRow } from "@/components/ReceiptRow";
 import { HomeSkeleton } from "@/components/Skeleton";
-import { Async, Button, Card, Divider, Label, Num, Screen } from "@/components/ui";
+import { Card, ErrorNote, Num, Screen, useTabInset } from "@/components/ui";
 
-const RECENT_COUNT = 4;
+/**
+ * Home.
+ *
+ * The layout is the one the better banking apps converge on, top to bottom:
+ * whose account this is, one figure, the two things you came to do, shortcuts
+ * to the rest, and the recent statement. Each band answers one question, and
+ * nothing asks to be read before the balance.
+ *
+ * What changed from the first version, and why:
+ *
+ * - The full card moved to its own tab. On a 360dp phone it took the top third
+ *   of the screen and pushed the balance and both buttons below the fold. Its
+ *   edge still stands at the side of the balance; see components/CardPeek.
+ * - Three stat tiles (streak, level, badges) became one line of text and two
+ *   links. They were three boxes of equal weight for three facts of unequal
+ *   use: level lives on the Card tab, badges on the profile.
+ * - Recent activity sits on a light sheet. It is the only light surface in the
+ *   app, and it turns the last band from more dark rows into the statement.
+ */
+
+const RECENT_COUNT = 3;
+
+/** Width of a mono digit, in em. JetBrains Mono's advance is 0.6em. */
+const MONO_EM = 0.6;
+
+const SHORTCUTS: { label: string; icon: LucideIcon; to: string }[] = [
+  { label: "Boosts", icon: Flame, to: "/(tabs)/boosts" },
+  { label: "Round-up", icon: Coins, to: "/roundup" },
+  { label: "Goals", icon: Target, to: "/goals" },
+  { label: "Insights", icon: Sparkles, to: "/ai-insights" },
+];
 
 export default function Home() {
   const { user } = useAuth();
+  const tabInset = useTabInset();
 
   const state = useApi(
     useCallback(async () => {
-      const [wallet, price, summary, txs, forecast, notifs] = await Promise.all([
+      const [wallet, price, summary, txs, notifs] = await Promise.all([
         walletAPI.balance(),
         miscAPI.btcPrice(),
         rewardsAPI.summary(),
         transactionAPI.list(1),
-        aiAPI.forecast(),
         miscAPI.notifications(),
       ]);
       return {
-        wallet, price, summary, forecast,
+        wallet, price, summary,
         txs: txs.items.slice(0, RECENT_COUNT),
         unread: notifs.unread_count,
       };
     }, []),
   );
 
-  // Buttons and stat tiles share a row while their longest words fit, and
-  // wrap at large text sizes instead of breaking a word in two.
-  const { fontScale } = useWindowDimensions();
-  const actionBasis = wordFitBasis(longestWordWidth("New transaction", fontSize.body), fontScale, 2 * space.xl);
-  const statBasis = wordFitBasis(LEVEL_NAME_WIDTH, fontScale, 2 * space.md + 2);
+  const { fontScale, width } = useWindowDimensions();
+  const shortcutBasis = wordFitBasis(longestWordWidth("Round-up", fontSize.caption), fontScale, space.sm);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   return (
-    <Screen onRefresh={state.refresh} refreshing={state.refreshing} refreshError={refreshError(state)}>
-      <View style={styles.topBar}>
-        <View style={{ flexShrink: 1 }}>
-          <Text style={styles.greeting}>{greeting}</Text>
-          <Text style={styles.name}>{user?.display_name ?? "there"}</Text>
+    <Screen
+      padded={false}
+      bottomInset={false}
+      fill
+      onRefresh={state.refresh}
+      refreshing={state.refreshing}
+      refreshError={refreshError(state)}
+    >
+      <View style={[styles.pad, styles.topBar]}>
+        <View style={styles.who}>
+          <Avatar name={user?.display_name} />
+          <View style={{ flexShrink: 1 }}>
+            <Text style={styles.greeting}>{greeting}</Text>
+            <Text numberOfLines={1} style={styles.name}>{user?.display_name ?? "there"}</Text>
+          </View>
         </View>
         <NotificationBell unread={state.data?.unread ?? 0} />
       </View>
 
-      <Async state={state} skeleton={<HomeSkeleton />}>
-        {({ wallet, price, summary, txs, forecast }) => {
+      {state.data === null ? (
+        <View style={styles.pad}>
+          {state.error ? <ErrorNote message={state.error} onRetry={state.reload} /> : <HomeSkeleton />}
+        </View>
+      ) : (
+        (() => {
+          const { wallet, price, summary, txs } = state.data;
           const up = price.change_24h >= 0;
+
+          // The card's edge shares a row with the balance, so it is only drawn
+          // when the figure leaves it room: a nine-digit balance, or text set
+          // large, takes the full width and the card gives way.
+          const figure = Math.round(wallet.balance_sats).toLocaleString("en-US");
+          const textScale = Math.min(Math.max(fontScale, 1), MAX_DISPLAY_FONT_SCALE);
+          const figureWidth =
+            figure.length * fontSize.display * MONO_EM * textScale +
+            space.sm + 4 * fontSize.display * 0.4 * MONO_EM * textScale;
+          const showPeek = figureWidth + space.lg + PEEK_VISIBLE <= width - space.lg;
+
           return (
             <>
-              {/* The card first, then the balance. The product is a card, and
-                  the finish is keyed to the tier the user has actually reached,
-                  so levelling up is something you can see rather than read. */}
-              <PaymentCard
-                levelKey={summary.level.key}
-                levelName={summary.level.name}
-                multiplier={summary.level.multiplier}
-                holder={user?.display_name ?? "Cardholder"}
-                seed={user?.id ?? 1}
-              />
-
-              {/* The balance is the thesis of the screen: one bold element,
-                  everything else quiet. */}
-              <View style={{ marginTop: space.xl }}>
-                <Label>Your balance</Label>
-              </View>
-              <View style={{ marginTop: space.sm + 2 }}>
-                <Odometer value={wallet.balance_sats} fontSize={fontSize.display} suffix="sats" />
-              </View>
-              <Text style={styles.balanceUsd}>{usd(wallet.balance_usd)}</Text>
-
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>BTC</Text>
-                <Num size={fontSize.caption}>{usd(price.price)}</Num>
-                {up ? (
-                  <TrendingUp size={iconSize.xs} color={COLORS.success} />
-                ) : (
-                  <TrendingDown size={iconSize.xs} color={COLORS.danger} />
-                )}
-                <Num size={fontSize.caption} color={up ? COLORS.success : COLORS.danger}>
-                  {up ? "+" : ""}{price.change_24h.toFixed(2)}%
-                </Num>
-              </View>
-
-              <View style={styles.actions}>
-                <Button
-                  label="New transaction"
-                  onPress={() => router.push("/(tabs)/simulate")}
-                  style={{ flexGrow: 1, flexBasis: actionBasis }}
-                />
-                <Button
-                  label="Wallet"
-                  variant="ghost"
-                  onPress={() => router.push("/(tabs)/wallet")}
-                  style={{ flexGrow: 1, flexBasis: actionBasis }}
-                />
-              </View>
-
-              <View style={styles.stats}>
-                <Stat
-                  label="Streak"
-                  value={`${summary.streak.current}`}
-                  unit="days"
-                  icon={<Flame size={iconSize.xs} color={COLORS.primary} />}
-                  basis={statBasis}
-                />
-                <Stat
-                  label="Level"
-                  value={summary.level.name}
-                  unit={`${summary.level.multiplier}x`}
-                  basis={statBasis}
-                />
-                <Stat
-                  label="Badges"
-                  value={`${summary.badges.earned_count}`}
-                  unit={`of ${summary.badges.total_count}`}
-                  basis={statBasis}
-                />
-              </View>
-
-              <Card onPress={() => router.push("/ai-insights")} style={{ marginBottom: space.lg }}>
-                <View style={styles.cardHead}>
-                  <View style={styles.cardHeadLeft}>
-                    <Sparkles size={iconSize.sm} color={COLORS.primary} />
-                    <Text style={styles.cardTitle}>AI insights</Text>
+              <View style={styles.pad}>
+                <View style={[styles.balance, showPeek && { minHeight: PEEK_HEIGHT }]}>
+                  <Text style={styles.balanceLabel}>Total balance</Text>
+                  <View style={{ marginTop: space.sm }}>
+                    <Odometer value={wallet.balance_sats} fontSize={fontSize.display} suffix="sats" />
                   </View>
-                  <ArrowUpRight size={iconSize.sm} color={COLORS.muted} />
-                </View>
-                <Text style={styles.cardBody}>
-                  {forecast.has_enough_data
-                    ? `Projected ${sats(forecast.predicted_sats_30d)} sats over the next 30 days, trending ${forecast.trend_direction}.`
-                    : forecast.message}
-                </Text>
-              </Card>
-
-              {summary.active_boost && (
-                <Beam style={{ marginBottom: space.lg }}>
-                  <Card tone="accent">
-                    <View style={styles.cardHeadLeft}>
-                      <Flame size={iconSize.sm} color={COLORS.primary} />
-                      <Text style={styles.cardTitle}>{summary.active_boost.category} boost active</Text>
+                  <View style={styles.subRow}>
+                    <Num size={fontSize.caption} color={COLORS.muted}>{usd(wallet.balance_usd)}</Num>
+                    <View style={styles.price}>
+                      <Text style={styles.priceLabel}>BTC</Text>
+                      <Num size={fontSize.caption} color={COLORS.muted}>{usd(price.price)}</Num>
+                      {up ? (
+                        <TrendingUp size={iconSize.xs} color={COLORS.success} />
+                      ) : (
+                        <TrendingDown size={iconSize.xs} color={COLORS.danger} />
+                      )}
+                      <Num size={fontSize.caption} color={up ? COLORS.success : COLORS.danger}>
+                        {up ? "+" : ""}{price.change_24h.toFixed(2)}%
+                      </Num>
                     </View>
-                    <Text style={styles.cardBody}>
-                      Earning {summary.active_boost.multiplier}x in this category.
-                    </Text>
-                  </Card>
-                </Beam>
-              )}
+                  </View>
+                  {showPeek ? (
+                    <CardPeek
+                      levelKey={summary.level.key}
+                      levelName={summary.level.name}
+                      lastFour={lastFour(user?.id ?? 1)}
+                      onPress={() => router.push("/(tabs)/card")}
+                    />
+                  ) : null}
+                </View>
 
-              <View style={styles.sectionHead}>
-                <Label>Recent activity</Label>
-                <Pressable
-                  onPress={() => router.push("/history")}
-                  accessibilityRole="link"
-                  hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
-                >
-                  <Text style={styles.seeAll}>See all</Text>
-                </Pressable>
+                <View style={styles.actions}>
+                  <Pill primary label="Pay" icon={ArrowUpRight} onPress={() => router.push("/simulate")} />
+                  <Pill label="Wallet" icon={Wallet} onPress={() => router.push("/(tabs)/wallet")} />
+                  <Pressable
+                    onPress={() => router.push("/(tabs)/more")}
+                    accessibilityRole="button"
+                    accessibilityLabel="More"
+                    style={({ pressed }) => [styles.round, { opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <LayoutGrid size={iconSize.lg} color={COLORS.text} />
+                  </Pressable>
+                </View>
+
+                <Card style={styles.shortcuts}>
+                  <View style={styles.shortcutsHead}>
+                    <Text style={styles.shortcutsTitle}>Quick actions</Text>
+                    <View style={styles.streak}>
+                      <Flame size={iconSize.xs} color={COLORS.primary} />
+                      <Text style={styles.shortcutsTitle}>
+                        {summary.streak.current}-day streak
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.shortcutRow}>
+                    {SHORTCUTS.map(({ label, icon: Icon, to }) => (
+                      <Pressable
+                        key={label}
+                        onPress={() => router.push(to as any)}
+                        accessibilityRole="button"
+                        accessibilityLabel={label}
+                        style={({ pressed }) => [
+                          styles.shortcut, { flexBasis: shortcutBasis, opacity: pressed ? 0.7 : 1 },
+                        ]}
+                      >
+                        <View style={styles.shortcutTile}>
+                          <Icon size={iconSize.lg} color={COLORS.primary} />
+                        </View>
+                        <Text style={styles.shortcutLabel}>{label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </Card>
+
+                {summary.active_boost && (
+                  <Beam style={{ marginTop: space.md }}>
+                    <Card tone="accent" onPress={() => router.push("/(tabs)/boosts")} style={styles.boost}>
+                      <Flame size={iconSize.md} color={COLORS.primary} />
+                      <Text style={styles.boostTitle}>
+                        {titleCase(summary.active_boost.category)} boost active
+                      </Text>
+                      <Num size={fontSize.body} color={COLORS.primary}>
+                        {summary.active_boost.multiplier}×
+                      </Num>
+                    </Card>
+                  </Beam>
+                )}
               </View>
-              <Divider />
-              {txs.length === 0 ? (
-                <Text style={styles.emptyLine}>Your first transaction will appear here.</Text>
-              ) : (
-                txs.map((t, i) => (
-                  <ReceiptRow
-                    key={t.id}
-                    {...toRow(t)}
-                    last={i === txs.length - 1}
+
+              <View style={[styles.sheet, { paddingBottom: tabInset + space.xl }]}>
+                <View style={styles.sheetHead}>
+                  <Text accessibilityRole="header" style={styles.sheetTitle}>Recent activity</Text>
+                  <Pressable
                     onPress={() => router.push("/history")}
-                  />
-                ))
-              )}
+                    accessibilityRole="link"
+                    hitSlop={{ top: 14, bottom: 14, left: 12, right: 12 }}
+                    style={styles.seeAll}
+                  >
+                    <Text style={styles.seeAllText}>See all</Text>
+                    <ArrowUpRight size={iconSize.sm} color={COLORS.inkMuted} />
+                  </Pressable>
+                </View>
+                {txs.length === 0 ? (
+                  <Text style={styles.emptyLine}>Your first transaction will appear here.</Text>
+                ) : (
+                  txs.map((t) => (
+                    <ReceiptRow key={t.id} paper {...toRow(t)} onPress={() => router.push("/history")} />
+                  ))
+                )}
+              </View>
             </>
           );
-        }}
-      </Async>
+        })()
+      )}
     </Screen>
   );
 }
@@ -200,10 +246,10 @@ function NotificationBell({ unread }: { unread: number }) {
   return (
     <Pressable
       onPress={() => router.push("/notifications")}
-      hitSlop={12}
+      hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-      style={styles.bell}
+      style={({ pressed }) => [styles.bell, { opacity: pressed ? 0.7 : 1 }]}
     >
       <Bell size={iconSize.lg} color={COLORS.text} />
       {unread > 0 && <View style={styles.bellDot} />}
@@ -211,32 +257,38 @@ function NotificationBell({ unread }: { unread: number }) {
   );
 }
 
-export const toRow = (t: Transaction) => ({
-  merchant: t.merchant,
-  category: t.category,
-  amountFiat: t.amount_fiat,
-  satsEarned: t.sats_earned,
-  createdAt: t.created_at,
-});
-
-function Stat({
-  label, value, unit, icon, basis,
+/**
+ * The two things Home is for. A pill, with its icon in a disc at the leading
+ * edge: fully rounded so they read as buttons at a glance and as a different
+ * kind of thing from the cards below them. One is solid; a screen gets one
+ * solid orange control, and here it is paying.
+ */
+function Pill({
+  label, icon: Icon, onPress, primary,
 }: {
-  label: string; value: string; unit?: string; icon?: React.ReactNode; basis: number;
+  label: string; icon: LucideIcon; onPress: () => void; primary?: boolean;
 }) {
+  const ink = primary ? COLORS.onPrimary : COLORS.text;
   return (
-    <View style={[styles.stat, { flexBasis: basis }]}>
-      <View style={styles.statHead}>
-        {icon}
-        <Text style={styles.statLabel}>{label}</Text>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.pill,
+        primary ? styles.pillPrimary : styles.pillPlain,
+        { opacity: pressed ? 0.85 : 1 },
+      ]}
+    >
+      <View style={[styles.pillDisc, { backgroundColor: primary ? COLORS.primaryPressed : COLORS.elevated }]}>
+        <Icon size={iconSize.md} color={ink} />
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      {unit ? <Text style={styles.statUnit}>{unit}</Text> : null}
-    </View>
+      <Text style={[styles.pillLabel, { color: ink }]}>{label}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  pad: { paddingHorizontal: space.lg },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -244,67 +296,124 @@ const styles = StyleSheet.create({
     paddingTop: space.md,
     paddingBottom: space.xl,
   },
+  who: { flexDirection: "row", alignItems: "center", gap: space.md, flexShrink: 1 },
   greeting: { color: COLORS.muted, fontSize: fontSize.caption },
-  name: { color: COLORS.text, fontSize: fontSize.heading, fontFamily: font.medium, marginTop: 2 },
-  bell: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  name: { color: COLORS.text, fontSize: fontSize.body + 1, fontFamily: font.medium, marginTop: 1 },
+  bell: {
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    borderRadius: MIN_TOUCH_TARGET / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
   bellDot: {
     position: "absolute",
-    top: 9,
-    right: 9,
+    top: 11,
+    right: 12,
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: COLORS.primary,
   },
-  balanceUsd: {
-    color: COLORS.muted,
-    fontSize: fontSize.body,
-    marginTop: space.xs + 2,
-    fontFamily: font.mono,
-  },
-  priceRow: {
+  balance: { justifyContent: "center" },
+  balanceLabel: { color: COLORS.muted, fontSize: fontSize.caption },
+  subRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
-    gap: space.xs + 2,
-    marginTop: space.lg,
-    marginBottom: space.xl,
+    columnGap: space.md,
+    rowGap: space.xs,
+    marginTop: space.sm,
   },
+  price: { flexDirection: "row", alignItems: "center", gap: space.xs + 1 },
   priceLabel: { color: COLORS.muted, fontSize: fontSize.caption },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: space.sm + 2, marginBottom: space.xl },
-  stats: { flexDirection: "row", flexWrap: "wrap", gap: space.sm + 2, marginBottom: space.xl },
-  stat: {
-    flexGrow: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: radius.card,
+  actions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: space.sm + 2,
+    marginTop: space.xl,
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm + 2,
+    minHeight: MIN_TOUCH_TARGET,
+    borderRadius: radius.pill,
+    paddingLeft: space.xs + 2,
+    paddingRight: space.xl - 4,
+    paddingVertical: space.xs + 2,
+  },
+  pillPrimary: { backgroundColor: COLORS.primary },
+  pillPlain: { backgroundColor: COLORS.raised, borderWidth: 1, borderColor: COLORS.border },
+  pillDisc: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  pillLabel: { fontSize: fontSize.body, fontFamily: font.medium },
+  round: {
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    borderRadius: MIN_TOUCH_TARGET / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.raised,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: space.md,
+    marginLeft: "auto",
   },
-  // Wraps so a tile's label and icon stay inside it at large text sizes.
-  statHead: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space.xs + 1 },
-  statLabel: { color: COLORS.muted, fontSize: fontSize.caption },
-  statValue: {
-    color: COLORS.text,
-    fontSize: fontSize.body,
-    fontFamily: font.medium,
-    marginTop: space.xs + 2,
+  shortcuts: { marginTop: space.xl - 4, paddingHorizontal: space.md, paddingVertical: space.md + 2 },
+  shortcutsHead: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    columnGap: space.md,
+    paddingHorizontal: space.xs + 2,
   },
-  statUnit: { color: COLORS.muted, fontSize: fontSize.caption, marginTop: 1 },
-  cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  cardHeadLeft: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  cardTitle: { color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium },
-  cardBody: { color: COLORS.muted, fontSize: fontSize.caption, marginTop: space.sm, lineHeight: 19 },
-  sectionHead: {
+  shortcutsTitle: { color: COLORS.muted, fontSize: fontSize.caption },
+  streak: { flexDirection: "row", alignItems: "center", gap: space.xs + 1 },
+  shortcutRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: space.md,
+    marginTop: space.md + 2,
+  },
+  shortcut: { flexGrow: 1, alignItems: "center", gap: space.sm },
+  shortcutTile: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.tile,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.raised,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  shortcutLabel: { color: COLORS.bright, fontSize: fontSize.caption, textAlign: "center" },
+  boost: { flexDirection: "row", alignItems: "center", gap: space.sm + 2, paddingVertical: space.md + 2 },
+  boostTitle: { color: COLORS.text, fontSize: fontSize.body, fontFamily: font.medium, flex: 1 },
+  sheet: {
+    flexGrow: 1,
+    marginTop: space.xl,
+    backgroundColor: COLORS.paper,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg + 2,
+  },
+  sheetHead: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: space.sm,
+    paddingHorizontal: space.xs,
     marginBottom: space.xs,
   },
-  seeAll: { color: COLORS.primary, fontSize: fontSize.caption },
+  sheetTitle: { color: COLORS.ink, fontSize: fontSize.body, fontFamily: font.medium },
+  seeAll: { flexDirection: "row", alignItems: "center", gap: 2 },
+  seeAllText: { color: COLORS.inkMuted, fontSize: fontSize.caption },
   emptyLine: {
-    color: COLORS.muted,
+    color: COLORS.inkMuted,
     fontSize: fontSize.caption,
     paddingVertical: space.xl,
     textAlign: "center",
