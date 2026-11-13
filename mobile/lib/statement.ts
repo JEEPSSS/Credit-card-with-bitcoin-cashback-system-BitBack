@@ -88,3 +88,32 @@ export function timeOfDay(iso: string): string {
     minute: "2-digit",
   });
 }
+
+export type DaySection<T> = { key: string; title: string; data: T[] };
+
+/**
+ * Anything with a timestamp, grouped under the same day headings as the
+ * statement, newest first. Notifications use it: a flat list with "17h ago"
+ * on every row read as a feed, where a heading per day reads as a record.
+ */
+export function daySections<T extends { created_at: string }>(
+  items: T[],
+  now: Date = new Date(),
+): DaySection<T>[] {
+  const byDay = new Map<number, T[]>();
+  for (const item of items) {
+    const day = startOfDay(serverTime(item.created_at));
+    const bucket = byDay.get(day);
+    if (bucket) bucket.push(item);
+    else byDay.set(day, [item]);
+  }
+  return [...byDay.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([day, rows]) => ({
+      key: String(day),
+      title: sectionTitle(new Date(day), now),
+      data: [...rows].sort(
+        (a, b) => serverTime(b.created_at).getTime() - serverTime(a.created_at).getTime(),
+      ),
+    }));
+}

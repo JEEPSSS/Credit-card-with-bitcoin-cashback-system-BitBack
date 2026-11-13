@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
@@ -7,16 +7,23 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { miscAPI, newIdempotencyKey, rewardsAPI, transactionAPI } from "@/lib/api";
 import { pct, sats, titleCase, usd } from "@/lib/format";
 import {
-  CATEGORY_ICON, COLORS, CONTROL_HIT_SLOP, MIN_CONTROL_HEIGHT, MIN_TOUCH_TARGET, font, fontSize,
-  iconSize, radius, space,
+  CATEGORY_ICON, COLORS, CONTROL_HIT_SLOP, MAX_DISPLAY_FONT_SCALE, MIN_CONTROL_HEIGHT, MIN_TOUCH_TARGET,
+  font, fontSize, iconSize, radius, space,
 } from "@/lib/theme";
 import type { Category, RewardBreakdown, TransactionResult } from "@/lib/types";
 import { useAction, useApi } from "@/lib/useApi";
 import { iconNamed } from "@/components/icons";
 import { Odometer } from "@/components/Odometer";
+import { Receipt, receiptFrom } from "@/components/Receipt";
 import { Field } from "@/components/Field";
 import { Async, Button, Card, ErrorNote, Header, InlineError, Label, Num, Screen } from "@/components/ui";
 
+/**
+ * The amount is set large and centred, with the presets as pills under it, as
+ * the "Add money" screens of the banking apps this redesign follows do: the
+ * figure is what the screen is about, and a boxed field made it look like one
+ * input among several.
+ */
 const PRESETS = [5, 15, 25, 50, 100];
 const PREVIEW_DEBOUNCE_MS = 300;
 const AMOUNT_FIELD_HEIGHT = 64;
@@ -42,6 +49,12 @@ export default function Simulate() {
   useEffect(() => {
     setIdempotencyKey(newIdempotencyKey());
   }, [amount, category, merchant]);
+
+  // The field is as wide as its digits, so the "$" stays against the figure
+  // and the pair is centred together. Mono digits are 0.6em wide.
+  const { fontScale } = useWindowDimensions();
+  const digitWidth = fontSize.display * 0.6 * Math.min(Math.max(fontScale, 1), MAX_DISPLAY_FONT_SCALE);
+  const amountWidth = Math.max(amount.length, 1) * digitWidth + space.sm;
 
   const value = parseFloat(amount);
   const valid = value > 0;
@@ -88,12 +101,13 @@ export default function Simulate() {
   return (
     <Screen>
       <Header
+        back
         title="New transaction"
         subtitle="Simulate a card purchase and see the reward before you commit."
       />
 
       <View style={styles.amountField}>
-        <Text style={styles.currency}>$</Text>
+        <Text maxFontSizeMultiplier={MAX_DISPLAY_FONT_SCALE} style={styles.currency}>$</Text>
         <TextInput
           accessibilityLabel="Amount in dollars"
           value={amount}
@@ -101,7 +115,8 @@ export default function Simulate() {
           keyboardType="decimal-pad"
           placeholder="0.00"
           placeholderTextColor={COLORS.placeholder}
-          style={styles.amountInput}
+          maxFontSizeMultiplier={MAX_DISPLAY_FONT_SCALE}
+          style={[styles.amountInput, { width: amountWidth }]}
         />
       </View>
 
@@ -260,7 +275,11 @@ function Result({ result, onDone }: { result: TransactionResult; onDone: () => v
         </Animated.View>
       </View>
 
-      <View style={{ marginTop: 40, gap: space.md }}>
+      <View style={{ marginTop: space.xl }}>
+        <Receipt data={receiptFrom(result.transaction, r)} />
+      </View>
+
+      <View style={{ marginTop: space.xl, gap: space.md }}>
         {result.round_up && (
           <Card>
             <Text style={styles.resultCardTitle}>Round-up added</Text>
@@ -310,34 +329,32 @@ const styles = StyleSheet.create({
   amountField: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.outline,
-    borderRadius: radius.control,
-    paddingHorizontal: space.md + 2,
+    justifyContent: "center",
     minHeight: AMOUNT_FIELD_HEIGHT,
-    marginBottom: space.md,
+    marginTop: space.sm,
+    marginBottom: space.lg,
   },
-  currency: { color: COLORS.muted, fontSize: fontSize.title, fontFamily: font.mono },
+  currency: { color: COLORS.muted, fontSize: fontSize.display, fontFamily: font.mono },
   amountInput: {
-    flex: 1,
-    marginLeft: space.xs + 2,
+    marginLeft: space.xs,
     color: COLORS.text,
-    fontSize: fontSize.title,
+    fontSize: fontSize.display,
     fontFamily: font.mono,
+    textAlign: "center",
+    padding: 0,
   },
+
   // Each preset is as wide as its label needs and shares out the rest, so at
   // large text sizes the row wraps instead of clipping "$100".
-  presets: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginBottom: space.xl },
+  presets: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: space.sm, marginBottom: space.xl },
   preset: {
-    flexGrow: 1,
     flexBasis: "auto",
     minWidth: MIN_TOUCH_TARGET,
-    paddingHorizontal: space.sm,
+    paddingHorizontal: space.lg,
     minHeight: MIN_CONTROL_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.control,
+    borderRadius: radius.pill,
     borderWidth: 1,
   },
   categories: {

@@ -1,6 +1,6 @@
 # Reacticx components
 
-Three components copied from [Reacticx](https://github.com/rit3zh/reacticx)
+Four components copied from [Reacticx](https://github.com/rit3zh/reacticx)
 (MIT, see `LICENSE` in this folder), at commit `ca19ee8` of 25 September 2026.
 Reacticx is a copy-in library: its components are meant to live in the app's
 own source rather than be installed as a package, so they are kept here.
@@ -14,6 +14,7 @@ Gesture Handler, at the same versions Reacticx itself is built against
 | `metal` | `components/PaymentCard.tsx` | The metal rim round the payment card |
 | `border-beam` | `components/Beam.tsx` | The beam round an active boost |
 | `masked-tab-bar` | `components/TabBar.tsx` | The bottom tab bar |
+| `receipt-card` | `components/Receipt.tsx` | A transaction as a till receipt (History, Home, Card, payment result) |
 
 ## Changes made here
 
@@ -29,3 +30,7 @@ Each is marked `BitBack:` in the source.
     driven by a pan gesture, which a screen reader cannot perform;
   - `Label` takes `maxFontSizeMultiplier`;
   - the import of `create-compound-component` points at this folder.
+- **receipt-card**: the figures use the app's JetBrains Mono instead of the
+  system mono, every `Text` caps its font scaling at 1.3x so the fixed-width
+  paper does not overflow, and the import of `create-compound-component`
+  points at this folder.

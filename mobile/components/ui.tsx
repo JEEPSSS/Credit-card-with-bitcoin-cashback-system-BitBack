@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, createContext, useContext } from "react";
 import {
   ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text,
   TextStyle, View, ViewStyle, useWindowDimensions,
@@ -14,14 +14,27 @@ import { WakeBanner } from "@/components/WakeBanner";
 
 export { COLORS };
 
+/**
+ * Room a screen must leave at the bottom for the floating tab bar. The tabs
+ * layout provides it; screens pushed over the tabs get the default, none.
+ */
+export const TabInsetContext = createContext(0);
+export const useTabInset = () => useContext(TabInsetContext);
+
 export function Screen({
   children, scroll = true, onRefresh, refreshing = false, padded = true, refreshError, onRetry,
+  fill = false, bottomInset = true,
 }: {
   children: ReactNode; scroll?: boolean; onRefresh?: () => void;
   refreshing?: boolean; padded?: boolean;
   /** A failed reload over data still on screen; see lib/screenState.ts. */
   refreshError?: string | null; onRetry?: () => void;
+  /** Content is at least as tall as the screen, so its last child can run to the bottom edge. */
+  fill?: boolean;
+  /** False when the screen pads its own bottom, as Home's sheet does. */
+  bottomInset?: boolean;
 }) {
+  const tabInset = useTabInset();
   // Keyed on the system text size. Changing it while the app runs left text
   // laid out at the old size, clipped until the app was restarted (found on a
   // device); a new key makes the screen's content lay itself out again. Screen
@@ -30,7 +43,11 @@ export function Screen({
   const inner = (
     <View
       key={fontScale}
-      style={{ paddingHorizontal: padded ? space.lg : 0, paddingBottom: space["2xl"] }}
+      style={{
+        paddingHorizontal: padded ? space.lg : 0,
+        paddingBottom: bottomInset ? space["2xl"] + tabInset : 0,
+        flexGrow: fill ? 1 : undefined,
+      }}
     >
       {children}
     </View>
@@ -42,6 +59,7 @@ export function Screen({
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={fill ? { flexGrow: 1 } : undefined}
           refreshControl={
             onRefresh ? (
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.muted} />
@@ -68,7 +86,7 @@ export function Header({ title, subtitle, back }: { title: string; subtitle?: st
           accessibilityRole="button"
           style={styles.backButton}
         >
-          <ChevronLeft size={iconSize.xl} color={COLORS.text} />
+          <ChevronLeft size={iconSize.lg} color={COLORS.text} />
         </Pressable>
       )}
       <Text accessibilityRole="header" style={styles.headerTitle}>{title}</Text>
@@ -257,11 +275,18 @@ export function Async<T>({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.bg },
   header: { paddingTop: space.sm, paddingBottom: space.xl },
+  // A circle, as the back control is in every banking app this layout draws
+  // on: a bare chevron in the corner was the least visible control on screen.
   backButton: {
     width: MIN_TOUCH_TARGET,
     height: MIN_TOUCH_TARGET,
+    borderRadius: MIN_TOUCH_TARGET / 2,
+    alignItems: "center",
     justifyContent: "center",
-    marginLeft: -space.md,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: space.md,
   },
   headerTitle: { color: COLORS.text, fontSize: fontSize.title, fontFamily: font.medium },
   headerSubtitle: {

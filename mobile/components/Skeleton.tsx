@@ -61,26 +61,18 @@ export function Block({ height, style }: { height: number; style?: ViewStyle }) 
   return <Animated.View style={[styles.block, { height }, shimmer, style]} />;
 }
 
-/** The home screen: card, balance, action row, stat row, two receipt lines. */
+/** The home screen: balance, the two pill buttons, the shortcuts card, three rows. */
 export function HomeSkeleton() {
   return (
     <View accessible accessibilityLabel="Loading your balance">
-      <Block height={200} style={{ borderRadius: radius.payment }} />
-      <View style={{ marginTop: space.xl }}>
-        <Bar width="30%" height={10} />
-        <Bar width="62%" height={34} style={{ marginTop: space.md }} />
-        <Bar width="34%" height={14} style={{ marginTop: space.sm }} />
-      </View>
+      <Bar width="30%" height={10} />
+      <Bar width="62%" height={34} style={{ marginTop: space.md }} />
+      <Bar width="48%" height={12} style={{ marginTop: space.md }} />
       <View style={styles.row}>
-        <Block height={MIN_BUTTON} style={{ flex: 1 }} />
-        <Block height={MIN_BUTTON} style={{ flex: 1 }} />
+        <Block height={MIN_BUTTON} style={{ width: 104, borderRadius: MIN_BUTTON / 2 }} />
+        <Block height={MIN_BUTTON} style={{ width: 124, borderRadius: MIN_BUTTON / 2 }} />
       </View>
-      <View style={styles.row}>
-        {[0, 1, 2].map((i) => (
-          <Block key={i} height={72} style={{ flex: 1 }} />
-        ))}
-      </View>
-      <Block height={86} style={{ marginTop: space.xl }} />
+      <Block height={124} style={{ marginTop: space.xl - 4 }} />
       <ListSkeleton rows={3} />
     </View>
   );

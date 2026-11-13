@@ -13,6 +13,7 @@ import {
 } from "@/lib/theme";
 import type { Category, Transaction } from "@/lib/types";
 import { ReceiptRow } from "@/components/ReceiptRow";
+import { openReceipt } from "@/components/Receipt";
 import { ListSkeleton } from "@/components/Skeleton";
 import { Empty, ErrorNote, Header } from "@/components/ui";
 
@@ -149,6 +150,7 @@ export default function History() {
               satsEarned={item.sats_earned}
               createdAt={item.created_at}
               last={index === section.data.length - 1}
+              onPress={() => openReceipt(item)}
             />
           )}
           onEndReachedThreshold={0.5}

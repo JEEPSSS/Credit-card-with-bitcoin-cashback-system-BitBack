@@ -4,6 +4,7 @@ import { ShieldAlert, iconNamed } from "@/components/icons";
 
 import { sats, titleCase } from "@/lib/format";
 import { timeOfDay } from "@/lib/statement";
+import type { Transaction } from "@/lib/types";
 import {
   CATEGORY_ICON, COLORS, RISK_FLAG_THRESHOLD, categoryColor, font, fontSize, iconSize,
   radius, space,
@@ -28,19 +29,67 @@ import {
 
 const PUCK_SIZE = 36;
 const PUCK_TINT_OPACITY = "22";   // 13% over the row, in 8-digit hex
+const PAPER_PUCK_OPACITY = "40";  // 25% over white: enough to tell the hues apart
+
+/** A transaction as the props a row takes. */
+export const toRow = (t: Transaction) => ({
+  merchant: t.merchant,
+  category: t.category,
+  amountFiat: t.amount_fiat,
+  satsEarned: t.sats_earned,
+  createdAt: t.created_at,
+});
 
 const iconFor = (category: string) =>
   iconNamed((CATEGORY_ICON as Record<string, string>)[category]);
 
 export const ReceiptRow = memo(function ReceiptRow({
-  merchant, category, amountFiat, satsEarned, createdAt, riskScore, onPress, last,
+  merchant, category, amountFiat, satsEarned, createdAt, riskScore, onPress, last, paper,
 }: {
   merchant: string; category: string; amountFiat: number; satsEarned: number;
   createdAt: string; riskScore?: number; onPress?: () => void; last?: boolean;
+  /** Drawn for the light sheet on Home: a white row with dark ink. */
+  paper?: boolean;
 }) {
   const Icon = iconFor(category);
   const tint = categoryColor(category);
   const flagged = (riskScore ?? 0) >= RISK_FLAG_THRESHOLD;
+
+  if (paper) {
+    // On the sheet each row is its own white slip rather than a ruled line: on
+    // a light ground a hairline between rows all but disappears. The puck keeps
+    // the category's colour as its fill, stronger than on the dark rows, and
+    // the glyph goes to ink, because the category hues are too light to read
+    // as a glyph on a pale tint (about 2.6:1).
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole={onPress ? "button" : undefined}
+        accessibilityLabel={
+          `${merchant}, ${titleCase(category)}, $${amountFiat.toFixed(2)}, ` +
+          `earned ${sats(satsEarned)} sats${flagged ? ", flagged for review" : ""}`
+        }
+        style={({ pressed }) => [styles.slip, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        <View style={[styles.puck, { backgroundColor: `${tint}${PAPER_PUCK_OPACITY}` }]}>
+          <Icon size={iconSize.md} color={COLORS.ink} />
+        </View>
+        <View style={styles.body}>
+          <View style={styles.merchantLine}>
+            <Text numberOfLines={1} style={[styles.merchant, { color: COLORS.ink }]}>{merchant}</Text>
+            {flagged && <ShieldAlert size={iconSize.xs} color={COLORS.danger} />}
+          </View>
+          <Text style={[styles.meta, { color: COLORS.inkMuted }]}>
+            {titleCase(category)} · {timeOfDay(createdAt)}
+          </Text>
+        </View>
+        <View style={styles.figures}>
+          <Text style={[styles.earned, { color: COLORS.inkAccent }]}>+{sats(satsEarned)}</Text>
+          <Text style={[styles.spent, { color: COLORS.inkMuted }]}>${amountFiat.toFixed(2)}</Text>
+        </View>
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable
@@ -85,6 +134,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: space.md + 2,
     borderBottomColor: COLORS.hairline,
+  },
+  slip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.paperCard,
+    borderWidth: 1,
+    borderColor: COLORS.paperEdge,
+    borderRadius: radius.tile,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
+    marginTop: space.sm + 2,
   },
   puck: {
     width: PUCK_SIZE,
