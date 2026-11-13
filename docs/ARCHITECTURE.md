@@ -28,7 +28,7 @@ cardholder's own history: two machine-learning models and four rule engines.
 
 | Part | Technology | What it does |
 |---|---|---|
-| Mobile app | Expo SDK 54, React Native 0.81, expo-router | 23 screens; Android APK through EAS Build; over-the-air updates through EAS Update |
+| Mobile app | Expo SDK 54, React Native 0.81, expo-router | 25 screens; Android APK through EAS Build; over-the-air updates through EAS Update |
 | API | Python 3.11, FastAPI, Pydantic | 51 API operations in 14 router modules; request IDs, one error format, rate limits |
 | Domain modules | Plain Python, NumPy, scikit-learn | Reward engine, fraud detector, forecast, boost recommender, persona, gamification |
 | Database | SQLAlchemy, Alembic (4 migrations) | 19 tables; SQLite in development and tests, Postgres (Neon) in production |
@@ -61,7 +61,7 @@ evaluation/              harness that evaluates all six components
 migrations/              Alembic schema history
 tests/                   255 backend tests
 mobile/
-  app/                   23 screens (file-based routes)
+  app/                   25 screens (file-based routes)
   components/, lib/      shared UI, design tokens, API client, 75 tests
 ```
 
@@ -157,7 +157,9 @@ Full method and results: [EVALUATION.md](EVALUATION.md).
 - The Android app is built with EAS Build and published as a GitHub release
   with its SHA-256 checksum. JavaScript changes reach installed apps as
   over-the-air updates on the `preview` channel (runtime 1.0.0).
-- The iPhone beta is distributed through TestFlight.
+- The iPhone beta is distributed through TestFlight, on the `production`
+  update channel; JS-only changes reach it with `eas update --branch production`
+  (see `mobile/LAUNCH.md`).
 
 ## Reproducing
 

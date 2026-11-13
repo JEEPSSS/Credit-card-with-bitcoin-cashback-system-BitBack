@@ -11,13 +11,14 @@ user's own transaction history. FastAPI backend, Expo (React Native) mobile app.
   [latest release](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest)
   and open it on an Android phone (allow "install unknown apps" when asked).
   The current build is
-  [preview 3](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/tag/v1.0.0-preview.3):
-  a metal rim on the payment card in the metal of your tier, a beam round the
-  active boost, and a tab bar with a sliding pill. It installs over an earlier
-  preview and keeps your sign-in.
+  [preview 4](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/tag/v1.0.0-preview.4):
+  a redesigned Home, a Card tab, a floating dock for the tab bar, Wallet
+  charts with range chips, and a receipt for every transaction. It installs
+  over an earlier preview and keeps your sign-in.
 - **iPhone beta:** install [TestFlight](https://apps.apple.com/app/testflight/id899247664),
   then open the [BitBack TestFlight invitation](https://testflight.apple.com/join/Bg5kgsmC)
-  on your iPhone. Tap **Accept**, then **Install** to download BitBack.
+  on your iPhone. Tap **Accept**, then **Install** to download BitBack. Changes to the app's
+  own code reach it as over-the-air updates; open the app twice to pick one up.
 - **Live API:** https://bitcoin-survey.onrender.com (health check at
   `/api/health`). It runs on Render's free tier and sleeps when idle, so the
   first request can take up to a minute; the app shows "Waking up the
@@ -96,7 +97,7 @@ main.py                 app assembly: config, middleware, lifespan, routers
 migrations/             Alembic; `alembic upgrade head`
 seed_demo.py            demo data generator
 tests/                  pytest
-mobile/                 Expo app (23 screens)
+mobile/                 Expo app (25 screens)
 ```
 
 ## The models and rule engines
@@ -174,7 +175,10 @@ third token set sat unused in a Tailwind stylesheet, and the app used thirteen
 distinct font sizes against the six documented. A unit test now asserts the
 scale is what the comment says it is.
 
-The balance odometer is the one animated element; everything else is static.
+Motion is limited to four places: the balance odometer, the metal rim on the
+card, the beam round an active boost, and the pill that slides to the active
+tab in the dock. Under the system reduce-motion setting the rim holds still
+and the beam is not drawn.
 Transactions render as receipt lines sharing one hairline rule with a
 right-aligned tabular-mono column, so figures align vertically down the screen.
 
