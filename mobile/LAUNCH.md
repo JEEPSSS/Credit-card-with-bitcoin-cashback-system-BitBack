@@ -2,11 +2,8 @@
 
 This covers the free, persistent path decided on for now: a real installable
 `.apk` via EAS Build, plus `eas update` afterward so code changes reach
-everyone who has it installed without a reinstall. iOS is intentionally not
-covered here — it needs either a paid Apple Developer account or the
-institutional TestFlight access you're checking on; see the conversation
-that led here for why the free route (Expo Go) can't give iOS the same
-"anyone, anywhere, anytime" result Android gets.
+everyone who has it installed without a reinstall. The iPhone app is
+distributed through TestFlight; how to update it is at the end.
 
 Run these steps on your own machine using your Expo account (free, no
 credit card required). Follow the sequence below.
@@ -66,15 +63,54 @@ else — new screens, the survey logic, anything in your own JS/TSX code —
 push it straight to everyone who already has the app:
 
 ```
-npx eas-cli update --branch preview --message "describe what changed"
+EXPO_PUBLIC_API_URL=https://bitcoin-survey.onrender.com npx eas-cli update --branch preview --message "describe what changed"
 ```
+
+Always set `EXPO_PUBLIC_API_URL` on that command. `eas update` does not read
+the `env` block in `eas.json`, which applies only to builds, so without it the
+update is compiled to call `localhost` and sign-in fails on every phone.
 
 The app checks for updates automatically; testers don't have to do
 anything for it to arrive.
 
-## When you're ready for iOS
+## Updating the iPhone app (TestFlight)
 
-If the institutional TestFlight access comes through, the same `eas.json`
-already has a `production` profile as a starting point — building for iOS
-will additionally require Apple credentials, which `eas build --platform
-ios` will walk you through providing once that account exists.
+The iPhone app is a TestFlight build made with the `production` profile, so
+it listens on the `production` update channel (runtime 1.0.0). It gets code
+changes the same way the APK does, just on a different branch.
+
+**Changes to your own JS/TSX code** (screens, styling, logic). First check
+that the native side has not changed since the TestFlight build, using that
+build's ID from `npx eas-cli build:list --platform ios --limit 1`:
+
+```
+npx eas-cli fingerprint:compare --build-id <iOS build ID>
+```
+
+If it reports that the fingerprints match, publish:
+
+```
+EXPO_PUBLIC_API_URL=https://bitcoin-survey.onrender.com npx eas-cli update --branch production --platform ios --message "describe what changed"
+```
+
+As for Android, the API address must be set on the command line.
+
+On the iPhone, open BitBack, close it fully, and open it again: the app
+downloads the update on the first start and runs it from the next. The build
+line at the foot of More shows which update it is running.
+
+To undo, note the current update's group ID before publishing
+(`npx eas-cli update:list --branch production --limit 3`) and republish it
+afterwards with `npx eas-cli update:republish --group <group ID>`.
+
+**Native changes** (a new native dependency, or native fields in `app.json`),
+or when the fingerprints do not match: make a new build and send it to
+TestFlight. This needs the Apple account the first build was made with.
+
+```
+npx eas-cli build --platform ios --profile production
+npx eas-cli submit --platform ios --latest
+```
+
+When Apple has processed it (usually under an hour), the TestFlight app on the
+iPhone shows **Update** next to BitBack.

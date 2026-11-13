@@ -540,6 +540,21 @@ clipboard cleared straight after. Output: 183 transactions, 808,285 sats,
 The demo video was re-recorded with these clips: purchases, fraud reasons,
 goals and wallet, 200% text and the offline notice now show the fixed app.
 
+### Previews 3 and 4 released (12 and 13 November 2026)
+
+Two later builds were published from the same `preview` profile and signing
+key, so each installs over the one before:
+[`v1.0.0-preview.3`](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/tag/v1.0.0-preview.3)
+(commit `fbcfe35`, SHA-256 `a27040e0…8824f8c`: metal card rim, boost beam,
+sliding tab pill) and
+[`v1.0.0-preview.4`](https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/tag/v1.0.0-preview.4)
+(commit `2974f0b`, SHA-256 `7238be77…a9dea0f`: redesigned Home, Card tab,
+dock, Wallet charts, receipts). For each, the EAS download and the released
+download have the same hash. Neither has been through the device rounds
+above: the dock drag gesture, TalkBack on the new tab bar and screens, large
+system text and frame rate are unchecked. The device checks that name
+Transact now apply to New transaction, which opens from Pay on Home.
+
 ## Tests added
 
 - `mobile/lib/format.test.ts`: plain-language fraud features, scorer names,
