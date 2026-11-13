@@ -61,7 +61,7 @@
     <h1>Credit Card with Bitcoin Cash Rebate System</h1>
     <p class="lede">BitBack is a working prototype of a card that pays its cashback in bitcoin instead of points. It prices every reward at the live bitcoin price, watches each cardholder's spending for fraud, forecasts next month's earnings and recommends where to spend, and every one of those features is tested against simple baselines.</p>
     <div class="actions">
-      <a class="btn primary" href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest">Android app (APK)</a>
+      <a class="btn primary" href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest/download/bitback.apk">Android app (APK)</a>
       <a class="btn" href="https://testflight.apple.com/join/Bg5kgsmC">iPhone beta (TestFlight)</a>
       <a class="btn" href="https://share.descript.com/view/fM8RSKYqYXl">Demo video</a>
       <a class="btn" href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack">Source code</a>
@@ -70,7 +70,7 @@
       <div class="stat"><b>51</b><span>API operations</span></div>
       <div class="stat"><b>25</b><span>app screens</span></div>
       <div class="stat"><b>6</b><span>models and rule engines, all evaluated</span></div>
-      <div class="stat"><b>318</b><span>automated tests</span></div>
+      <div class="stat"><b>344</b><span>automated tests</span></div>
       <div class="stat"><b>0.887</b><span>fraud F1 on held-out data</span></div>
     </div>
   </div>
@@ -82,7 +82,7 @@
     <h2>How it works</h2>
     <p>A purchase earns sats (1 bitcoin = 100,000,000 sats) at the bitcoin price at that moment, scaled by the cardholder's level and any active boost. Six components then read the cardholder's own history to protect, forecast and advise.</p>
     <figure class="figure"><img src="images/diagram-concept.png" alt="A card purchase passes through the reward engine into the wallet; two machine-learning models and four rule engines read the cardholder's history." loading="lazy"><figcaption>The idea in one picture. The example assumes a bitcoin price of $60,000.</figcaption></figure>
-    <figure class="figure"><img src="images/shots-earning.jpg" alt="Three phone screens: Home with the card and balance, the live reward preview, and the purchase result." loading="lazy"><figcaption>The earning loop in the Android app: Home, the live reward preview, and the result of a purchase.</figcaption></figure>
+    <figure class="figure"><img src="images/shots-app.jpg" alt="Four phone screens from the current app: Home with the balance and recent activity, the Card tab, Wallet with sats earned per period, and a transaction receipt." loading="lazy"><figcaption>The current app (preview 4) with the demo account: Home, the Card tab, Wallet, and the receipt for a purchase.</figcaption></figure>
   </div>
 </section>
 
@@ -131,9 +131,9 @@
   <div class="wrap">
     <h2>Try it</h2>
     <ul class="links">
-      <li><b>Android:</b> download the APK from the <a href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest">latest release</a>.</li>
-      <li><b>iPhone:</b> install TestFlight, then open the <a href="https://testflight.apple.com/join/Bg5kgsmC">BitBack invitation</a>.</li>
-      <li><b>Demo account:</b> sign-in details are in the <a href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack#readme">README</a>; or create your own account.</li>
+      <li><b>Android:</b> <a href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest/download/bitback.apk">download bitback.apk</a> (<a href="https://github.com/JEEPSSS/Credit-card-with-bitcoin-cashback-system-BitBack/releases/latest">preview 4 release notes</a>) and open it on the phone; allow installing unknown apps when asked.</li>
+      <li><b>iPhone:</b> install TestFlight, then open the <a href="https://testflight.apple.com/join/Bg5kgsmC">BitBack invitation</a>. It runs the same code as preview 4; updates arrive over the air when the app is opened twice.</li>
+      <li><b>Demo account:</b> <code>demo@bitback.app</code> / <code>demo12345</code>, or create your own account.</li>
       <li><b>Live API:</b> <a href="https://bitcoin-survey.onrender.com/api/health">health check</a> and <a href="https://bitcoin-survey.onrender.com/docs">interactive documentation</a>. The free server sleeps when idle, so the first request can take up to a minute.</li>
       <li><b>Research survey:</b> <a href="https://bitcoin-survey.onrender.com/survey/">bitcoin-survey.onrender.com/survey</a></li>
       <li><b>Privacy policy:</b> <a href="https://bitcoin-survey.onrender.com/privacy">bitcoin-survey.onrender.com/privacy</a></li>
