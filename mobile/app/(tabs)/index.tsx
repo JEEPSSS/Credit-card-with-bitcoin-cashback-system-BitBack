@@ -21,6 +21,7 @@ import { CardPeek, PEEK_HEIGHT, PEEK_VISIBLE } from "@/components/CardPeek";
 import { Odometer } from "@/components/Odometer";
 import { lastFour } from "@/components/PaymentCard";
 import { ReceiptRow, toRow } from "@/components/ReceiptRow";
+import { openReceipt } from "@/components/Receipt";
 import { HomeSkeleton } from "@/components/Skeleton";
 import { Card, ErrorNote, Num, Screen, useTabInset } from "@/components/ui";
 
@@ -230,7 +231,7 @@ export default function Home() {
                   <Text style={styles.emptyLine}>Your first transaction will appear here.</Text>
                 ) : (
                   txs.map((t) => (
-                    <ReceiptRow key={t.id} paper {...toRow(t)} onPress={() => router.push("/history")} />
+                    <ReceiptRow key={t.id} paper {...toRow(t)} onPress={() => openReceipt(t)} />
                   ))
                 )}
               </View>

@@ -14,6 +14,7 @@ import type { Category, RewardBreakdown, TransactionResult } from "@/lib/types";
 import { useAction, useApi } from "@/lib/useApi";
 import { iconNamed } from "@/components/icons";
 import { Odometer } from "@/components/Odometer";
+import { Receipt, receiptFrom } from "@/components/Receipt";
 import { Field } from "@/components/Field";
 import { Async, Button, Card, ErrorNote, Header, InlineError, Label, Num, Screen } from "@/components/ui";
 
@@ -274,7 +275,11 @@ function Result({ result, onDone }: { result: TransactionResult; onDone: () => v
         </Animated.View>
       </View>
 
-      <View style={{ marginTop: 40, gap: space.md }}>
+      <View style={{ marginTop: space.xl }}>
+        <Receipt data={receiptFrom(result.transaction, r)} />
+      </View>
+
+      <View style={{ marginTop: space.xl, gap: space.md }}>
         {result.round_up && (
           <Card>
             <Text style={styles.resultCardTitle}>Round-up added</Text>

@@ -16,6 +16,7 @@ import { useApi } from "@/lib/useApi";
 import { refreshError } from "@/lib/screenState";
 import { PaymentCard } from "@/components/PaymentCard";
 import { ReceiptRow, toRow } from "@/components/ReceiptRow";
+import { openReceipt } from "@/components/Receipt";
 import { CardsSkeleton } from "@/components/Skeleton";
 import { MaskedTabBar } from "@/components/reacticx/masked-tab-bar";
 import { Async, Card, Divider, Header, Label, Num, Screen } from "@/components/ui";
@@ -147,7 +148,7 @@ export default function CardScreen() {
                     key={t.id}
                     {...toRow(t)}
                     last={i === txs.length - 1}
-                    onPress={() => router.push("/history")}
+                    onPress={() => openReceipt(t)}
                   />
                 ))
               )}
